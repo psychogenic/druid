@@ -1,0 +1,115 @@
+# this file is used by the other makefiles, which are responsible for setting important variables
+
+
+DEBUG_FLAGS ?= -g3 -O0
+#DEBUG_FLAGS ?= -O3
+#DEBUG_FLAGS ?= 
+
+ifeq ($(HOST_TARGET), NA)
+	CC	:= g++
+	CCRESOURCE := 
+else
+	CC	:= $(HOST_TARGET)-g++
+	CCRESOURCE := $(HOST_TARGET)-windres 
+endif
+
+LD        := $(CC)
+
+ifeq ($(TARGET_PLATFORM), PLATFORM_WINDOWS)
+
+	PLATFORM_CPPFLAGS ?= -I$(CROSS_HOME)/include -DWIN32 -DWX_PRECOMP  -fno-strict-aliasing -municode 
+	PLATFORM_LDFLAGS  ?= $(STATIC_FLAG) -mthread
+	BOOST_THREADLIB ?= boost_thread_win32
+	
+else
+	PLATFORM_CPPFLAGS ?= -I$(CROSS_HOME)/include 
+	PLATFORM_LDFLAGS  ?= $(STATIC_FLAG)
+	BOOST_THREADLIB ?= boost_thread
+	EXENAME	:= druid4arduino
+endif
+	
+
+WX_CONFIG ?= $(CROSS_HOME)/bin/wx-config
+
+# C++ flags to use with wxWidgets code 
+WX_CXXFLAGS ?= `$(WX_CONFIG) --cxxflags`
+WX_LDFLAGS ?= `$(WX_CONFIG) --libs `
+
+LIBSERIALGUI_CXXFLAGS ?=  -IlibDruid/includes/
+LIBSERIALGUI_LDFLAGS ?= 
+
+
+
+BOOST_CXXFLAGS ?= -I$(CROSS_HOME)/include
+BOOST_LDFLAGS ?= -L$(CROSS_HOME)/lib -lboost_regex$(BOOST_LIBSUFFIX) -lboost_filesystem$(BOOST_LIBSUFFIX) -lboost_system$(BOOST_LIBSUFFIX) -l$(BOOST_THREADLIB)$(BOOST_LIBSUFFIX)
+
+
+CPPDEPS = 
+
+
+SERIALGUI_CXXFLAGS =  -I. -I./includes  $(DEBUG_FLAGS) -D$(TARGET_PLATFORM) \
+	$(SERIALUI_CXXFLAGS) $(LIBSERIALGUI_CXXFLAGS) $(BOOST_CXXFLAGS) $(PLATFORM_CPPFLAGS) $(WX_CXXFLAGS) $(CPPFLAGS) $(CXXFLAGS)
+
+SERIALGUI_LDFLAGS =  $(STATICFLAG) $(WX_LDFLAGS) $(SERIALUI_LDFLAGS) $(PLATFORM_LDFLAGS) $(LIBSERIALGUI_LDFLAGS) $(BOOST_LDFLAGS) $(LDFLAGS)
+
+
+MODULES   := executable libDruid
+SRC_DIR   := $(MODULES)	
+BUILD_DIR := $(addprefix build/,$(MODULES))
+
+SRC       := $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.cpp))
+OBJ       := $(patsubst %.cpp,build/%.o,$(SRC))
+INCPATHS  := $(foreach sdir,$(SRC_DIR),$(sdir)/includes)
+INCLUDES  := $(addprefix -I,$(INCPATHS))
+
+
+ifeq ($(TARGET_PLATFORM), PLATFORM_WINDOWS)
+	RESRC        := $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.rs))
+	RESOBJ       := $(patsubst %.rs,build/%.o,$(RESRC))	
+	RESFLAGS ?=  `$(WX_CONFIG) --cxxflags  | sed -e 's/\-D[^ ]*//g'`
+
+endif
+
+vpath %.cpp $(SRC_DIR)
+vpath %.rs $(SRC_DIR)
+
+define make-goal
+$1/%.o: %.cpp	
+	$(CC) $(INCLUDES) $(SERIALGUI_CXXFLAGS) $(CPPDEPS) -c $$< -o $$@
+
+
+$1/%.o: %.rs
+	$(CCRESOURCE) $(RESFLAGS) $$< -o $$@
+
+endef
+
+define make-resgoal
+endef
+
+
+
+.PHONY: all checkdirs clean
+
+all: checkdirs build/$(EXENAME) 
+
+
+build/$(EXENAME): $(OBJ) $(RESOBJ)
+	$(LD) -o $@ $(OBJ) $(SERIALGUI_LDFLAGS)
+	# $(LD) $^ -o $@ $(SERIALGUI_LDFLAGS)
+
+
+
+checkdirs: $(BUILD_DIR)
+
+$(BUILD_DIR):
+	@mkdir -p $@
+
+clean:
+	@rm -rf $(BUILD_DIR)
+
+
+$(foreach bdir,$(BUILD_DIR),$(eval $(call make-resgoal,$(bdir))))
+
+$(foreach bdir,$(BUILD_DIR),$(eval $(call make-goal,$(bdir))))
+
+

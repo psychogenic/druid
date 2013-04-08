@@ -1,0 +1,21 @@
+# This makefile is used for compiling the program under Linux and for Linux.
+# Should be usable as-is if you have all the dependencies installed 
+# (including the SerialUI source)
+
+TARGET_PLATFORM ?= PLATFORM_LINUX
+
+CROSS_HOME ?= /usr
+STATIC_FLAG ?= 
+
+
+HOST_TARGET ?= NA
+
+BOOST_LIBSUFFIX ?= -mt
+
+SERIALUI_CXXFLAGS ?=  -I../SerialUI/includes
+SERIALUI_LDFLAGS ?= 
+
+EXENAME	:= druid4arduino
+
+
+include makefiles/Makefile-common

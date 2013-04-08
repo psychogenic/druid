@@ -1,0 +1,22 @@
+# This makefile is used to build 32-bit Windows applications under Linux (using MinGW)
+# check the variables here to set the path where you've installed your cross-compiled
+# wxWidgets/boost libs (CROSS_HOME), the boost library suffix used, etc.
+
+TARGET_PLATFORM ?= PLATFORM_WINDOWS
+
+CROSS_HOME ?= /usr/local/win32
+STATIC_FLAG ?= -static 
+
+HOST_TARGET ?= x86_64-w64-mingw32
+
+BOOST_LIBSUFFIX ?= -mt-s
+
+SERIALUI_CXXFLAGS ?=  -I../SerialUI/includes
+SERIALUI_LDFLAGS ?= 
+
+EXENAME	:= Druid4Arduino64.exe
+
+
+
+
+include makefiles/Makefile-common
