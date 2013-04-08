@@ -1,0 +1,16 @@
+
+ Druid4Arduino Copyright (C) 2013 Pat Deegan, psychogenic.com
+ http://flyingcarsandstuff.com/projects/Druid4Arduino/
+
+ Released under the GNU GPL v3--see LICENSE.txt for details.
+
+
+If you have a compiled (binary) version of the program, you can
+simply save it anywhere and run it.  There are makefiles for 
+compiling the program under Linux (for both Linux and Windows 
+binairies) and it should be possible to build the program 
+under Windows and Mac relatively easily (though I haven't 
+done this and would appreciate feedback/input/help).
+
+See makefiles/README.txt for details.
+
