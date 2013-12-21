@@ -22,8 +22,8 @@
 #define MENU_H_
 
 
-#include "ExternalIncludes.h"
-#include "SerialUser.h"
+#include "libDruid/ExternalIncludes.h"
+#include "libDruid/SerialUser.h"
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
 

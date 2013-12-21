@@ -18,16 +18,15 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef UTIL_H_
-#define UTIL_H_
+#ifndef LIBDRUID_UTIL_H_
+#define LIBDRUID_UTIL_H_
 
-#include "ExternalIncludes.h"
+#include "libDruid/ExternalIncludes.h"
 #include <boost/shared_ptr.hpp>
 #include <string>
 
-#include "SerialGUIConfig.h"
-#include "ExternalIncludes.h"
-#include "SerialUIUser.h"
+#include "libDruid/SerialGUIConfig.h"
+#include "libDruid/SerialUIUser.h"
 
 namespace DRUID {
 

@@ -1,5 +1,5 @@
 /*
- * SerialEnumeratorBase.h -- base class for serial port enumerators
+ * ExternalIncludes.h
  *
  *	Druid4Arduino Copyright (C) 2013 Pat Deegan, psychogenic.com
  *	http://flyingcarsandstuff.com/projects/druid4arduino/
@@ -18,27 +18,31 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SERIALENUMERATORBASE_H_
-#define SERIALENUMERATORBASE_H_
+#ifndef LIBDRUID_EXTERNALINCLUDES_H_
+#define LIBDRUID_EXTERNALINCLUDES_H_
 
-#include "ExternalIncludes.h"
+#ifndef BOOST_THREAD_USE_LIB
+// required for mingw32 linking of thread libs
+#define BOOST_THREAD_USE_LIB
+#endif 
+#include <boost/thread.hpp>
 
-namespace DRUID {
+#include <boost/bind.hpp>
+#include <boost/asio.hpp>
+// include <boost/asio/serial_port.hpp>
+#include <boost/lexical_cast.hpp>
+// include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <iostream>
+#include <string>
 
-typedef std::string PortName;
-typedef std::vector<PortName> PortNameList;
-
-class SerialEnumeratorBase {
-public:
-	SerialEnumeratorBase();
-	virtual ~SerialEnumeratorBase();
-
-	virtual bool portExists(const PortName & pName);
-
-	virtual PortNameList listPorts() = 0;
+#include <deque>
+#include <vector>
 
 
-};
 
-} /* namespace DRUID */
-#endif /* SERIALENUMERATORBASE_H_ */
+typedef std::string DRUIDStdString;
+
+typedef std::string DRUIDString;
+
+
+#endif /* EXTERNALINCLUDES_H_ */

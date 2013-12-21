@@ -18,7 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "SerialEnumeratorMac.h"
+#include "libDruid/SerialEnumeratorMac.h"
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 

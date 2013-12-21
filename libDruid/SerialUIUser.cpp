@@ -18,7 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ExternalIncludes.h"
+#include "libDruid/ExternalIncludes.h"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/find.hpp>
@@ -27,11 +27,50 @@
 #include <unistd.h>
 
 #include <SUIStrings.h>
-#include "SerialUIUser.h"
-#include "SerialGUIConfig.h"
+#include "libDruid/SerialUIUser.h"
+#include "libDruid/SerialGUIConfig.h"
 
 
 namespace DRUID {
+void LockedLastMessage::setTo(const DRUIDString & val)
+{
+
+	DRUID_DEBUG("LockedLastMessage::setTo locking");
+	message_mutex.lock();
+	DRUID_DEBUG("LockedLastMessage::setTo locked");
+	last_message = val;
+	message_mutex.unlock();
+	DRUID_DEBUG("LockedLastMessage::setTo unlocked");
+
+}
+
+DRUIDString LockedLastMessage::get()
+{
+
+	DRUID_DEBUG("LockedLastMessage::get locking");
+	message_mutex.lock();
+	DRUID_DEBUG("LockedLastMessage::get locked");
+	DRUIDString retVal(last_message);
+	message_mutex.unlock();
+	DRUID_DEBUG("LockedLastMessage::get unlocked");
+	return retVal;
+
+
+}
+
+
+
+void LockedLastMessage::clear()
+{
+
+	DRUID_DEBUG("LockedLastMessage::clear locking");
+	message_mutex.lock();
+	DRUID_DEBUG("LockedLastMessage::clear locked");
+	last_message.clear();
+	message_mutex.unlock();
+	DRUID_DEBUG("LockedLastMessage::clear unlocked");
+
+}
 
 SerialUIUser::SerialUIUser() : SerialUser(),
 		message_rcvd(false),
@@ -115,90 +154,109 @@ SerialUIControlStrings SerialUIUser::enterProgramMode()
 	DRUIDString inc_msg;
 	inc_msg.reserve(500);
 	do {
-			if (incoming_message.size())
-			{
 
-				inc_msg = incoming_message;
-				DRUIDString::iterator iter = inc_msg.begin();
-				while ( (!expectedSize) && iter != inc_msg.end())
-				{
+		if (! incoming_message.size())
+		{
+			// nothing to do right now...
+			usleep(200000);
+			continue;
+		}
 
-					if (! haveStart)
-					{
-						if ( (*iter) >= '0' && (*iter) <= '9')
-						{
-							haveStart = true;
-							progMsgSizeIter = iter;
+		inc_msg = incoming_message;
+		DRUIDString::iterator iter = inc_msg.begin();
+		while ((!expectedSize) && iter != inc_msg.end()) {
 
-						}
-					} else {
+			// expectedSize not yet set and we're not at the end of the incoming msg either
 
-						if (iter != progMsgSizeIter && ( (*iter) < '0' || (*iter) > '9'))
-						{
-							// looks like we have our expected size...
-							std::string sizeBuf;
-							sizeBuf.reserve(iter - progMsgSizeIter);
-							std::copy(progMsgSizeIter, iter, std::back_inserter(sizeBuf));
-							progMsgStartIter = iter;
-
-							try
-							{
-
-								prefixSize = (progMsgStartIter - inc_msg.begin());
-								expectedSize = boost::lexical_cast<unsigned int>(sizeBuf);
-
-								// also account for any chars at the beginning
-								// expectedSize += ;
-
-
-								DRUID_DEBUG2("Prog mode ret string should have length", expectedSize);
-							} catch(boost::bad_lexical_cast &)
-							{
-								DRUID_DEBUG2("Weird cast attempt for sizeBuf", sizeBuf);
-							}
-						}
-					}
-
-					iter++;
-				}
-
-				if (expectedSize && inc_msg.size() >= (prefixSize + expectedSize))
-				{
-
-					std::string progRetStr;
-					std::string leftOvers;
-					progRetStr.reserve(prefixSize + expectedSize + 5);
-
-					DRUIDString::iterator progIterEnd = progMsgStartIter + expectedSize;
-					std::copy(progMsgStartIter, progIterEnd, std::back_inserter(progRetStr));
-
-					if (progIterEnd == inc_msg.end())
-					{
-						inc_msg = "";
-					} else {
-						DRUIDString newIncoming;
-						newIncoming.reserve(inc_msg.end() - progIterEnd);
-						std::copy(progIterEnd, inc_msg.end(), std::back_inserter(newIncoming));
-
-						inc_msg = newIncoming;
-					}
-
-					incoming_message = inc_msg;
-
-
-					eot_checks_enabled = true;
-
-					DRUID_DEBUG2("Incoming message now -->", incoming_message);
-
-
-					return setupProgModeStrings(progRetStr);
+			if (!haveStart) {
+				// still searching for the first num char
+				if ((*iter) >= '0' && (*iter) <= '9') {
+					// got it, this is our messagesize beginning
+					haveStart = true;
+					progMsgSizeIter = iter;
 
 				}
+			} else {
+				// already have the start, need to find the last num char
 
+				if (iter != progMsgSizeIter // size will be > 10, so we only get here if we're not still on the first num char
+						&& ((*iter) < '0' || (*iter) > '9')) {
+
+					// the iter is no longer pointing to a num
+					// looks like we have our expected size...
+
+					// put our size in a string
+					std::string sizeBuf;
+					sizeBuf.reserve(iter - progMsgSizeIter);
+					std::copy(progMsgSizeIter, iter,
+							std::back_inserter(sizeBuf));
+					progMsgStartIter = iter;
+
+					try {
+						// get the expected size of the program strings string
+						prefixSize = (progMsgStartIter - inc_msg.begin());
+						expectedSize = boost::lexical_cast<unsigned int>(
+								sizeBuf);
+
+						// also account for any chars at the beginning
+						// expectedSize += ;
+
+						DRUID_DEBUG2("Prog mode ret string should have length",
+								expectedSize);
+
+
+					} catch (boost::bad_lexical_cast &) {
+						DRUID_DEBUG2("Weird cast attempt for sizeBuf", sizeBuf);
+					}
+				}
 			}
 
-			usleep(200000);
-		} while ( time(NULL) <= maxTime && !modeEntered);
+			iter++;
+		}
+
+		if (expectedSize && inc_msg.size() >= (prefixSize + expectedSize)) {
+
+			DRUID_DEBUG2("We've got enough chars for the program strings message:", expectedSize);
+
+			// now, we have the expected size set and have an incoming message
+			// of at least that many chars
+
+			std::string progRetStr; // will hold our program strings
+			std::string leftOvers;
+
+			// reserve enough space in our prog strings string
+			progRetStr.reserve(prefixSize + expectedSize + 5);
+
+			DRUIDString::iterator progIterEnd = progMsgStartIter + expectedSize;
+			std::copy(progMsgStartIter, progIterEnd,
+					std::back_inserter(progRetStr));
+
+			if (progIterEnd == inc_msg.end()) {
+				inc_msg = "";
+			} else {
+				DRUIDString newIncoming;
+				newIncoming.reserve(inc_msg.end() - progIterEnd);
+				std::copy(progIterEnd, inc_msg.end(),
+						std::back_inserter(newIncoming));
+
+				inc_msg = newIncoming;
+			}
+
+			incoming_message = inc_msg;
+
+			eot_checks_enabled = true;
+
+			DRUID_DEBUG2("program strings str now -->", progRetStr);
+			DRUID_DEBUG2("Incoming message now -->", incoming_message);
+
+			return setupProgModeStrings(progRetStr);
+
+		}
+
+
+
+		usleep(80000);
+	} while ( time(NULL) <= maxTime && !modeEntered);
 
 	eot_checks_enabled = true;
 	return ctrl_strings;
@@ -209,54 +267,80 @@ void SerialUIUser::serialReceived(char* buffer, size_t bytes_transferred) {
 	static const size_t eot_str_len = eot_str.length();
 
 	// DRUID_DEBUG2("SerialUIUser::serialReceived", bytes_transferred);
-	if (bytes_transferred)
+	if (! bytes_transferred)
 	{
-
-		for (size_t i=0; i< bytes_transferred; i++)
-		{
-			DRUID_DEBUGVERBOSE(buffer[i]);
-		}
-		incoming_message.append(buffer, bytes_transferred);
-
-		if (eot_checks_enabled) {
-			DRUIDString::iterator findIter = std::search(
-					incoming_message.begin(), incoming_message.end(),
-					eot_str.begin(), eot_str.end());
-
-			if (findIter != incoming_message.end()) {
-				DRUID_DEBUG("Found EOT marker!");
-
-				// clear the last message
-				last_message.clear();
-				// copy the newly arrived message to last_message
-				last_message.reserve(findIter - incoming_message.begin());
-				std::copy(incoming_message.begin(), findIter,
-						std::back_inserter(last_message));
-
-				DRUID_DEBUG2("LAST MESSAGE IS", last_message);
-
-				findIter += eot_str_len;
-
-				if (findIter != incoming_message.end()) {
-					DRUIDString newIncoming;
-					newIncoming.reserve(incoming_message.end() - findIter);
-					std::copy(findIter, incoming_message.end(),
-							std::back_inserter(newIncoming));
-
-					incoming_message = newIncoming;
-					DRUID_DEBUG2("Incoming overflow", incoming_message);
-				}
-			}
-			// DRUID_DEBUG(last_message);
-		}
+		// nothing to do
+		return ;
 	}
 
+#ifdef SERIALGUI_DEBUG_ENABLE
+	for (size_t i=0; i< bytes_transferred; i++)
+	{
+		DRUID_DEBUGVERBOSE(buffer[i]);
+	}
+#endif
+
+	// append this data to the incoming msg
+	incoming_message.append(buffer, bytes_transferred);
+	if (! eot_checks_enabled) {
+		// nothing left to do.
+		return;
+	}
+
+	// am checking for EOTs, so do it:
+
+	DRUIDString::iterator findIter = std::search(incoming_message.begin(),
+			incoming_message.end(), eot_str.begin(), eot_str.end());
+
+	if (findIter == incoming_message.end()) {
+		// No EOT found
+		return;
+	}
+
+	DRUID_DEBUG("Found EOT marker!");
+
+	// Get safe (locked) access to raw message
+
+
+	DRUID_DEBUG("SerialUIUser::serialReceived locking");
+	last_msg.lock();
+	DRUID_DEBUG("SerialUIUser::serialReceived locked");
+	// clear the last message
+	DRUIDString & dirAccessLastMsg = last_msg.directAccess();
+	dirAccessLastMsg.clear();
+
+	// copy the newly arrived message to last_message, first ensure we have enough space
+	dirAccessLastMsg.reserve(findIter - incoming_message.begin());
+
+	// actually copy the data from incomming to last_msg
+	std::copy(incoming_message.begin(), findIter,
+			std::back_inserter(dirAccessLastMsg));
+
+
+	DRUID_DEBUG2("LAST MESSAGE IS", dirAccessLastMsg);
+
+	last_msg.unlock(); // stay away from "dirAccessLastMsg" from now on
+	DRUID_DEBUG("SerialUIUser::serialReceived unlocked");
+
+
+	findIter += eot_str_len;
+
+	if (findIter != incoming_message.end()) {
+		// we have extra stuff after the EOT, stash it for later.
+		DRUIDString newIncoming;
+		newIncoming.reserve(incoming_message.end() - findIter);
+		std::copy(findIter, incoming_message.end(),
+				std::back_inserter(newIncoming));
+
+		incoming_message = newIncoming;
+		DRUID_DEBUG2("Incoming overflow", incoming_message);
+	}
 
 }
 
 bool SerialUIUser::messageReceived() {
 
-	if (last_message.size())
+	if (last_msg.size())
 	{
 		message_rcvd = true;
 		checkIfMessageWasError();
@@ -271,17 +355,17 @@ void SerialUIUser::flushReceiveBuffer() {
 	incoming_message.clear();
 }
 void SerialUIUser::lastMessageClear() {
-	last_message.clear();
+	last_msg.clear();
 	message_rcvd = false;
 	last_rcvdcheck_len = 0;
 }
 
 const DRUIDString& SerialUIUser::lastMessageRef() {
-	return last_message;
+	return last_msg.directAccess();
 }
 
 DRUIDString SerialUIUser::lastMessage() {
-	return last_message;
+	return last_msg.get();
 }
 
 
@@ -301,7 +385,7 @@ void SerialUIUser::checkIfMessageWasError()
 	const DRUIDString errorGeneric_str(ctrl_strings.error);
 
 	// make a copy, last_message can change asynchronously
-	DRUIDString msg(last_message);
+	DRUIDString msg(last_msg.get());
 
 	if (! boost::algorithm::find_first(msg, errorGeneric_str))
 	{
@@ -314,7 +398,7 @@ void SerialUIUser::checkIfMessageWasError()
 	boost::algorithm::erase_first(msg, errorGeneric_str);
 
 	// set the last_message to the "cleaned up" version
-	last_message = msg;
+	last_msg.setTo(msg);
 	SerialUserStringList errMsgList = lastMessageAsList();
 
 	std::string errMsg;
@@ -328,33 +412,78 @@ void SerialUIUser::checkIfMessageWasError()
 
 
 }
+
+bool SerialUIUser::inputRequired(bool forceCheck) {
+
+	if (forceCheck)
+		checkIfRequiresInput();
+
+	return required_input != InputType_None;
+}
+
 void SerialUIUser::checkIfRequiresInput()
 {
+	DRUID_DEBUG("SerialUIUser::checkIfRequiresInput()");
+
 	const DRUIDString moreStringDataPrompt(ctrl_strings.more_str);
 	const DRUIDString moreNumericDataPrompt(ctrl_strings.more_num);
-	const boost::regex reqInputRegex(DRUIDString("^((")
-			+ moreStringDataPrompt + ")|(" + moreNumericDataPrompt + "))$");
+	const DRUIDString regexStr("^(.*)(("
+							+ moreStringDataPrompt
+							+ ")|("
+							+ moreNumericDataPrompt + "))\\s*$");
+	const boost::regex reqInputRegex(regexStr, boost::regex::perl);
 
 	required_input = InputType_None;
 
+	DRUID_DEBUG2("searching for moredata", moreStringDataPrompt);
+	DRUID_DEBUG2("searching for morenumdata", moreNumericDataPrompt);
+	DRUID_DEBUG2("using regex", regexStr);
+
+	DRUIDString lastLine;
 
 	SerialUserStringList linesOfInterest = this->lastMessageAsList();
 	for (SerialUserStringList::iterator iter = linesOfInterest.begin();
 				iter != linesOfInterest.end(); iter++)
 	{
 		boost::smatch what;
+		// DRUID_DEBUG2("checking line", *iter);
+
 		if (boost::regex_match(*iter, what, reqInputRegex))
 		{
-			if (what[2].length())
+			DRUID_DEBUG("got a match...");
+			required_input_prompt = "";
+			if (what[1].length())
+			{
+				// prompt prefix:
+				required_input_prompt = what[1];
+			} else if (lastLine.size() > 2) {
+				required_input_prompt = lastLine;
+
+			}
+
+			if (what[3].length())
 			{
 				required_input = InputType_String;
+				DRUID_DEBUG("Need string input...");
+
 				return;
-			} else if (what[3].length())
+			} else if (what[4].length())
 			{
 				required_input = InputType_Numeric;
+				DRUID_DEBUG("Need num input...");
 				return;
 			}
+
+
+
+
+		} else {
+
+			DRUID_DEBUG("NO match.");
 		}
+
+		lastLine = *iter;
+
 	}
 
 	return;

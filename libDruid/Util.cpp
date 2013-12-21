@@ -19,11 +19,11 @@
  */
 
 
-#include "ExternalIncludes.h"
+#include "libDruid/ExternalIncludes.h"
 #include <unistd.h>
 
-#include "SerialGUIConfig.h"
-#include "Util.h"
+#include "libDruid/SerialGUIConfig.h"
+#include "libDruid/Util.h"
 
 namespace DRUID {
 
@@ -191,7 +191,7 @@ ConnectionPackagePtr Util::getConnection(unsigned int baud_rate,
 
 	ConnectionPackagePtr conn_package(new UtilConnectionPackage(baud_rate, device));
 
-	if (! (conn_package) && conn_package->active())
+	if (! (conn_package && conn_package->active()) )
 	{
 		return emptyPtr;
 	}
@@ -199,26 +199,6 @@ ConnectionPackagePtr Util::getConnection(unsigned int baud_rate,
 	return conn_package;
 }
 
-/*  DEADBEEF
-std::wstring Util::stringToWide(const std::string & aStr)
-{
-	std::wstring retStr;
-	retStr.reserve(aStr.length());
-	std::copy(aStr.begin(), aStr.end(), std::back_inserter(retStr));
-
-	return retStr;
-}
-
-
-std::string Util::wideToString(const std::wstring & aWstr)
-{
-	std::string retStr;
-	retStr.reserve(aWstr.size());
-	std::copy(aWstr.begin(), aWstr.end(), std::back_inserter(retStr));
-
-	return retStr;
-}
-*/
 
 Util::Util() {
 

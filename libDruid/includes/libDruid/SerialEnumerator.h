@@ -1,5 +1,5 @@
 /*
- * SerialDruid.h -- main include for the library.
+ * SerialEnumerator.h -- typedefs for platform-dependent enumerators
  *
  *	Druid4Arduino Copyright (C) 2013 Pat Deegan, psychogenic.com
  *	http://flyingcarsandstuff.com/projects/druid4arduino/
@@ -18,17 +18,31 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SERIALDRUID_H_
-#define SERIALDRUID_H_
+#ifndef SERIALENUMERATOR_H_
+#define SERIALENUMERATOR_H_
+
+#include "libDruid/ExternalIncludes.h"
+
+#include "libDruid/SerialEnumeratorLinux.h"
+#include "libDruid/SerialEnumeratorMac.h"
+#include "libDruid/SerialEnumeratorWindows.h"
+
+namespace DRUID {
+
+#ifdef PLATFORM_LINUX
+typedef SerialEnumeratorLinux SerialEnumerator;
+#endif
 
 
-
-#include "SerialGUIConfig.h"
-#include "ExternalIncludes.h"
-#include "SerialUIUser.h"
-#include "MenuParser.h"
-#include "Util.h"
-#include "SerialEnumerator.h"
+#ifdef PLATFORM_MAC
+typedef SerialEnumeratorMac SerialEnumerator;
+#endif
 
 
-#endif /* SERIALDRUID_H_ */
+#ifdef PLATFORM_WINDOWS
+typedef SerialEnumeratorWindows SerialEnumerator;
+#endif
+
+
+}
+#endif /* SERIALENUMERATOR_H_ */

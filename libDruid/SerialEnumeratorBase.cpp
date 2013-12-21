@@ -19,8 +19,8 @@
  */
 
 
-#include "SerialEnumeratorBase.h"
-#include "SerialGUIConfig.h"
+#include "libDruid/SerialEnumeratorBase.h"
+#include "libDruid/SerialGUIConfig.h"
 #include <boost/filesystem.hpp>
 namespace DRUID {
 

@@ -21,10 +21,11 @@
 #ifndef SERIALGUICONFIG_H_
 #define SERIALGUICONFIG_H_
 
-#include "ExternalIncludes.h"
+#include "libDruid/ExternalIncludes.h"
 
-// #define SERIALGUI_DEBUG_ENABLE
-#undef SERIALGUI_DEBUG_ENABLE
+//
+#define SERIALGUI_DEBUG_ENABLE
+// #undef SERIALGUI_DEBUG_ENABLE
 
 
 #define SERIALGUI_MAX_RESPONSE_DELAY_SECONDS		6

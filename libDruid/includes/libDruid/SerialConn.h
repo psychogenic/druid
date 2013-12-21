@@ -21,8 +21,8 @@
 #ifndef SERIALCONN_H_
 #define SERIALCONN_H_
 
-#include "ExternalIncludes.h"
-#include "SerialListener.h"
+#include "libDruid/ExternalIncludes.h"
+#include "libDruid/SerialListener.h"
 
 #define DRUID_SERIALCONN_MAX_READ_LEN	512
 namespace DRUID {

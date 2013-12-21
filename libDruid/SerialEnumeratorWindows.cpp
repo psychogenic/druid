@@ -20,7 +20,7 @@
  */
 
 
-#include "SerialEnumeratorWindows.h"
+#include "libDruid/SerialEnumeratorWindows.h"
 
 
 #ifdef PLATFORM_WINDOWS
@@ -42,6 +42,14 @@ bool SerialEnumeratorWindows::portExists(const PortName & pName)
 	return true;
 
 }
+
+// I don't have any experience with Windows and rarely have access
+// to somewhere I can test...  Short version is that the Arduino
+// often appears on some high port number, so we'll just display
+// a list of COM1-10.
+// If YOU know how to do detection, at a minimum listing only
+// COM ports that have /something/ connected, then lemme know how!
+//
 PortNameList SerialEnumeratorWindows::listPorts()
 {
 
@@ -50,6 +58,12 @@ PortNameList SerialEnumeratorWindows::listPorts()
 	retList.push_back("COM2");
 	retList.push_back("COM3");
 	retList.push_back("COM4");
+	retList.push_back("COM5");
+	retList.push_back("COM6");
+	retList.push_back("COM7");
+	retList.push_back("COM8");
+	retList.push_back("COM9");
+	retList.push_back("COM10");
 	return retList;
 }
 

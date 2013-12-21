@@ -19,13 +19,13 @@
  */
 
 
-#include "ExternalIncludes.h"
+#include "libDruid/ExternalIncludes.h"
 #include <iostream>
 #include <boost/regex.hpp>
 #include <unistd.h>
 
-#include "SerialUser.h"
-#include "SerialGUIConfig.h"
+#include "libDruid/SerialUser.h"
+#include "libDruid/SerialGUIConfig.h"
 
 namespace DRUID {
 
@@ -207,14 +207,24 @@ SerialUserStringList SerialUser::lastMessageAsList()
 	boost::regex stringSepRegex(stringSeps, boost::regex::normal);
 	SerialUserStringList retList;
 
-	const DRUIDString & msg = this->lastMessageRef();
-	if (! msg.length())
+	DRUID_DEBUG("SerialUser::lastMessageAsList()");
+
+	// in fast applications, access the lastMessageRef can cause
+	// race conditions... just make a copy right away, even if it
+	// costs us a bit of init time for each access.
+	DRUIDString opStr(this->lastMessage());
+	if (! opStr.length())
+	{
+
+		DRUID_DEBUG("lastMessage is empty!");
 		return retList;
 
-	// make a copy, last message can change asynchronously
-	DRUIDString opStr(msg);
+
+	}
 
 	boost::regex_split(std::back_inserter(retList), opStr, stringSepRegex);
+
+	DRUID_DEBUG2("lastMessage has #lines:", retList.size());
 
 	return retList;
 

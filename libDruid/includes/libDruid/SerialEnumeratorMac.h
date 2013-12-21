@@ -1,5 +1,5 @@
 /*
- * MenuWalker.h
+ * SerialEnumeratorMac.h -- Mac serial port enumerator, totally untested.
  *
  *	Druid4Arduino Copyright (C) 2013 Pat Deegan, psychogenic.com
  *	http://flyingcarsandstuff.com/projects/druid4arduino/
@@ -18,26 +18,21 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MENUWALKER_H_
-#define MENUWALKER_H_
+#ifndef SERIALENUMERATORMAC_H_
+#define SERIALENUMERATORMAC_H_
 
-#ifdef HOHOHO
+#include "libDruid/SerialEnumeratorBase.h"
+
 namespace DRUID {
 
-#include "Menu.h"
-
-class MenuWalker {
+class SerialEnumeratorMac : public SerialEnumeratorBase  {
 public:
-	MenuWalker();
-	virtual ~MenuWalker();
+	SerialEnumeratorMac();
+	virtual ~SerialEnumeratorMac();
 
-	void traverse(MenuPtr topLevelMenu);
+	virtual PortNameList listPorts();
 
-	virtual void itemCommand(MenuPtr menu, unsigned int index, DRUIDString key, DRUIDString help);
-	virtual void itemSubmenu(MenuPtr menu, MenuPtr subMenu, const DRUIDString & name, unsigned int index);
 };
 
 } /* namespace DRUID */
-
-#endif
-#endif /* MENUWALKER_H_ */
+#endif /* SERIALENUMERATORMAC_H_ */

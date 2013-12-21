@@ -18,9 +18,9 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ExternalIncludes.h"
-#include "SerialGUIConfig.h"
-#include "SerialConn.h"
+#include "libDruid/ExternalIncludes.h"
+#include "libDruid/SerialGUIConfig.h"
+#include "libDruid/SerialConn.h"
 
 #include <stdlib.h>
 #include <unistd.h>

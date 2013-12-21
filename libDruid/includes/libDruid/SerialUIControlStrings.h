@@ -1,6 +1,6 @@
 /*
- * SerialEnumeratorWindows.h -- windows serial port enumerator.
- * I have no idea how to do this, just spits out COM[1..4].
+ * SerialUIControlStrings.h -- storage for various control strings as
+ * reported by SerialUI.
  *
  *	Druid4Arduino Copyright (C) 2013 Pat Deegan, psychogenic.com
  *	http://flyingcarsandstuff.com/projects/druid4arduino/
@@ -19,24 +19,33 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SERIALENUMERATORWINDOWS_H_
-#define SERIALENUMERATORWINDOWS_H_
+#ifndef SERIALUICONTROLSTRINGS_H_
+#define SERIALUICONTROLSTRINGS_H_
 
-#include "SerialEnumeratorBase.h"
+#include "libDruid/SerialGUIConfig.h"
+#include "libDruid/ExternalIncludes.h"
+
 
 namespace DRUID {
 
-class SerialEnumeratorWindows : public SerialEnumeratorBase {
-public:
-	SerialEnumeratorWindows();
-	virtual ~SerialEnumeratorWindows();
 
+typedef struct SerialUIControlStringsStruct {
+	DRUIDString version;
+	DRUIDString up_key;
+	DRUIDString exit_key;
+	DRUIDString error;
+	DRUIDString help_key;
+	DRUIDString prefix_command;
+	DRUIDString prefix_submenu;
+	DRUIDString help_sep;
+	DRUIDString more_str;
+	DRUIDString more_num;
+	DRUIDString prompt_str;
+	DRUIDString eot_str;
 
-	virtual bool portExists(const PortName & pName);
-	virtual PortNameList listPorts();
+} SerialUIControlStrings ;
 
-
-};
 
 } /* namespace DRUID */
-#endif /* SERIALENUMERATORWINDOWS_H_ */
+
+#endif /* SERIALUICONTROLSTRINGS_H_ */

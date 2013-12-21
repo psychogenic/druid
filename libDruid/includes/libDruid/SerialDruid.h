@@ -1,5 +1,5 @@
 /*
- * SerialEnumeratorMac.h -- Mac serial port enumerator, totally untested.
+ * SerialDruid.h -- main include for the library.
  *
  *	Druid4Arduino Copyright (C) 2013 Pat Deegan, psychogenic.com
  *	http://flyingcarsandstuff.com/projects/druid4arduino/
@@ -18,21 +18,17 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SERIALENUMERATORMAC_H_
-#define SERIALENUMERATORMAC_H_
+#ifndef SERIALDRUID_H_
+#define SERIALDRUID_H_
 
-#include "SerialEnumeratorBase.h"
 
-namespace DRUID {
 
-class SerialEnumeratorMac : public SerialEnumeratorBase  {
-public:
-	SerialEnumeratorMac();
-	virtual ~SerialEnumeratorMac();
+#include "libDruid/SerialGUIConfig.h"
+#include "libDruid/ExternalIncludes.h"
+#include "libDruid/SerialUIUser.h"
+#include "libDruid/MenuParser.h"
+#include "libDruid/Util.h"
+#include "libDruid/SerialEnumerator.h"
 
-	virtual PortNameList listPorts();
 
-};
-
-} /* namespace DRUID */
-#endif /* SERIALENUMERATORMAC_H_ */
+#endif /* SERIALDRUID_H_ */

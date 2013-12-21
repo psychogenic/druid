@@ -1,5 +1,6 @@
 /*
- * SerialEnumerator.h -- typedefs for platform-dependent enumerators
+ * SerialEnumeratorLinux.h -- Linux serial enumerator, relies on presence of
+ * /dev/serial.
  *
  *	Druid4Arduino Copyright (C) 2013 Pat Deegan, psychogenic.com
  *	http://flyingcarsandstuff.com/projects/druid4arduino/
@@ -18,31 +19,21 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SERIALENUMERATOR_H_
-#define SERIALENUMERATOR_H_
+#ifndef SERIALENUMERATORLINUX_H_
+#define SERIALENUMERATORLINUX_H_
 
-#include "ExternalIncludes.h"
-
-#include "SerialEnumeratorLinux.h"
-#include "SerialEnumeratorMac.h"
-#include "SerialEnumeratorWindows.h"
+#include "libDruid/SerialEnumeratorBase.h"
 
 namespace DRUID {
 
-#ifdef PLATFORM_LINUX
-typedef SerialEnumeratorLinux SerialEnumerator;
-#endif
+class SerialEnumeratorLinux : public SerialEnumeratorBase {
+public:
+	SerialEnumeratorLinux();
+	virtual ~SerialEnumeratorLinux();
 
+	virtual PortNameList listPorts();
 
-#ifdef PLATFORM_MAC
-typedef SerialEnumeratorMac SerialEnumerator;
-#endif
+};
 
-
-#ifdef PLATFORM_WINDOWS
-typedef SerialEnumeratorWindows SerialEnumerator;
-#endif
-
-
-}
-#endif /* SERIALENUMERATOR_H_ */
+} /* namespace DRUID */
+#endif /* SERIALENUMERATORLINUX_H_ */

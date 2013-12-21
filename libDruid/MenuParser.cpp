@@ -19,8 +19,8 @@
  */
 
 
-#include "SerialGUIConfig.h"
-#include "MenuParser.h"
+#include "libDruid/SerialGUIConfig.h"
+#include "libDruid/MenuParser.h"
 
 #include <time.h>
 #include <boost/regex.hpp>

@@ -1,6 +1,5 @@
 /*
- * SerialUIControlStrings.h -- storage for various control strings as
- * reported by SerialUI.
+ * SerialListener.h -- interface for serial port listener
  *
  *	Druid4Arduino Copyright (C) 2013 Pat Deegan, psychogenic.com
  *	http://flyingcarsandstuff.com/projects/druid4arduino/
@@ -19,33 +18,22 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SERIALUICONTROLSTRINGS_H_
-#define SERIALUICONTROLSTRINGS_H_
+#ifndef SERIALLISTENER_H_
+#define SERIALLISTENER_H_
 
-#include "SerialGUIConfig.h"
-#include "ExternalIncludes.h"
-
-
+#include "libDruid/ExternalIncludes.h"
 namespace DRUID {
 
+class SerialListener {
+public:
+	SerialListener();
+	virtual ~SerialListener();
 
-typedef struct SerialUIControlStringsStruct {
-	DRUIDString version;
-	DRUIDString up_key;
-	DRUIDString exit_key;
-	DRUIDString error;
-	DRUIDString help_key;
-	DRUIDString prefix_command;
-	DRUIDString prefix_submenu;
-	DRUIDString help_sep;
-	DRUIDString more_str;
-	DRUIDString more_num;
-	DRUIDString prompt_str;
-	DRUIDString eot_str;
+	virtual void serialError(const DRUIDString & errMsg) = 0;
+	virtual void serialReceived(char * buffer, size_t bytes_transferred) = 0;
 
-} SerialUIControlStrings ;
 
+};
 
 } /* namespace DRUID */
-
-#endif /* SERIALUICONTROLSTRINGS_H_ */
+#endif /* SERIALLISTENER_H_ */

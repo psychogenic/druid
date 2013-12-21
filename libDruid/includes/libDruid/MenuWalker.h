@@ -1,5 +1,5 @@
 /*
- * ExternalIncludes.h
+ * MenuWalker.h
  *
  *	Druid4Arduino Copyright (C) 2013 Pat Deegan, psychogenic.com
  *	http://flyingcarsandstuff.com/projects/druid4arduino/
@@ -18,36 +18,26 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EXTERNALINCLUDES_H_
-#define EXTERNALINCLUDES_H_
+#ifndef MENUWALKER_H_
+#define MENUWALKER_H_
 
-#ifndef BOOST_THREAD_USE_LIB
-// required for mingw32 linking of thread libs
-#define BOOST_THREAD_USE_LIB
-#endif 
-#include <boost/thread.hpp>
+#ifdef HOHOHO
+namespace DRUID {
 
-#include <boost/bind.hpp>
-#include <boost/asio.hpp>
-// include <boost/asio/serial_port.hpp>
-#include <boost/lexical_cast.hpp>
-// include <boost/date_time/posix_time/posix_time_types.hpp>
-#include <iostream>
-#include <string>
+#include "libDruid/Menu.h"
 
-#include <deque>
-#include <vector>
+class MenuWalker {
+public:
+	MenuWalker();
+	virtual ~MenuWalker();
 
-#ifdef POSIX
-//include <termios.h>
+	void traverse(MenuPtr topLevelMenu);
+
+	virtual void itemCommand(MenuPtr menu, unsigned int index, DRUIDString key, DRUIDString help);
+	virtual void itemSubmenu(MenuPtr menu, MenuPtr subMenu, const DRUIDString & name, unsigned int index);
+};
+
+} /* namespace DRUID */
+
 #endif
-
-
-
-
-typedef std::string DRUIDStdString;
-
-typedef std::string DRUIDString;
-
-
-#endif /* EXTERNALINCLUDES_H_ */
+#endif /* MENUWALKER_H_ */

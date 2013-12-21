@@ -23,9 +23,10 @@
 #ifndef SERIALUIUSER_H_
 #define SERIALUIUSER_H_
 
-#include "SerialUser.h"
-#include "SerialUIControlStrings.h"
+#include "libDruid/SerialUser.h"
+#include "libDruid/SerialUIControlStrings.h"
 
+#include <boost/thread/mutex.hpp>
 
 namespace DRUID {
 
@@ -37,6 +38,22 @@ typedef enum SerialUIUserInputTypeEnum {
 	InputType_Date
 } UserInputType ;
 
+typedef struct LockedLastMessageStruct {
+
+	void setTo(const DRUIDString & val);
+	DRUIDString get();
+	void clear();
+
+	inline void lock() { message_mutex.lock();}
+	inline void unlock() { message_mutex.unlock();}
+	inline DRUIDString & directAccess() { return last_message;}
+	inline size_t size() { return last_message.size();}
+
+
+private:
+	DRUIDString last_message;
+	boost::mutex message_mutex;
+} LockedLastMessage;
 
 class SerialUIUser: public SerialUser {
 public:
@@ -62,8 +79,9 @@ public:
 	virtual void serialReceived(char * buffer, size_t bytes_transferred);
 	virtual void flushReceiveBuffer();
 
-	bool inputRequired() { return required_input != InputType_None;}
+	bool inputRequired(bool forceCheck=false) ;
 	UserInputType inputRequiredType() { return required_input; }
+	const DRUIDString & inputRequiredPromptString() { return required_input_prompt; }
 
 	bool upMenuLevel();
 
@@ -82,13 +100,16 @@ private:
 
 
 	UserInputType required_input;
+	DRUIDString required_input_prompt;
+
 	bool awaiting_response;
 	bool message_rcvd;
 	size_t last_rcvdcheck_len;
 	DRUIDString incoming_message;
-	DRUIDString last_message;
 	bool eot_checks_enabled;
 	DRUIDString eot_str;
+
+	LockedLastMessage last_msg;
 	SerialUIControlStrings ctrl_strings;
 
 };

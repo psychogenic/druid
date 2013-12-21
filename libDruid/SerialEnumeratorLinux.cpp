@@ -18,7 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "SerialEnumeratorLinux.h"
+#include "libDruid/SerialEnumeratorLinux.h"
 #include <boost/filesystem.hpp>
 
 

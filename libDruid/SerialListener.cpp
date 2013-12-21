@@ -19,7 +19,7 @@
  */
 
 
-#include "SerialListener.h"
+#include "libDruid/SerialListener.h"
 
 namespace DRUID {
 

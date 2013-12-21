@@ -19,7 +19,7 @@
  */
 
 
-#include "MenuWalker.h"
+#include "libDruid/MenuWalker.h"
 #ifdef DEADBEEF
 namespace DRUID {
 

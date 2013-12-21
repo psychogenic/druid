@@ -21,10 +21,10 @@
 #ifndef MENUPARSER_H_
 #define MENUPARSER_H_
 
-#include "ExternalIncludes.h"
-#include "SerialUser.h"
-#include "Menu.h"
-#include "SerialUIControlStrings.h"
+#include "libDruid/ExternalIncludes.h"
+#include "libDruid/SerialUser.h"
+#include "libDruid/Menu.h"
+#include "libDruid/SerialUIControlStrings.h"
 
 namespace DRUID {
 

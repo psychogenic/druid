@@ -21,14 +21,17 @@
 #ifndef SERIALUSER_H_
 #define SERIALUSER_H_
 
-#include "ExternalIncludes.h"
-
 #include <vector>
 #include <string>
+
+
+#include "libDruid/ExternalIncludes.h"
+
+#include "libDruid/SerialGUIConfig.h"
+#include "libDruid/SerialListener.h"
+#include "libDruid/SerialConn.h"
+
 #include <boost/shared_ptr.hpp>
-#include "SerialGUIConfig.h"
-#include "SerialListener.h"
-#include "SerialConn.h"
 
 namespace DRUID {
 

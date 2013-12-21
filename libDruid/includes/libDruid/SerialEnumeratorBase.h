@@ -1,6 +1,5 @@
 /*
- * SerialEnumeratorLinux.h -- Linux serial enumerator, relies on presence of
- * /dev/serial.
+ * SerialEnumeratorBase.h -- base class for serial port enumerators
  *
  *	Druid4Arduino Copyright (C) 2013 Pat Deegan, psychogenic.com
  *	http://flyingcarsandstuff.com/projects/druid4arduino/
@@ -19,21 +18,27 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SERIALENUMERATORLINUX_H_
-#define SERIALENUMERATORLINUX_H_
+#ifndef SERIALENUMERATORBASE_H_
+#define SERIALENUMERATORBASE_H_
 
-#include "SerialEnumeratorBase.h"
+#include "libDruid/ExternalIncludes.h"
 
 namespace DRUID {
 
-class SerialEnumeratorLinux : public SerialEnumeratorBase {
-public:
-	SerialEnumeratorLinux();
-	virtual ~SerialEnumeratorLinux();
+typedef std::string PortName;
+typedef std::vector<PortName> PortNameList;
 
-	virtual PortNameList listPorts();
+class SerialEnumeratorBase {
+public:
+	SerialEnumeratorBase();
+	virtual ~SerialEnumeratorBase();
+
+	virtual bool portExists(const PortName & pName);
+
+	virtual PortNameList listPorts() = 0;
+
 
 };
 
 } /* namespace DRUID */
-#endif /* SERIALENUMERATORLINUX_H_ */
+#endif /* SERIALENUMERATORBASE_H_ */
