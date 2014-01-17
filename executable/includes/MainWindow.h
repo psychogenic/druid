@@ -105,6 +105,8 @@ private:
     void saveConfig();
     bool loadConfig();
 
+    bool sendFileStream();
+
 
     unsigned int menu_id_counter;
 

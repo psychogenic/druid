@@ -24,6 +24,9 @@
 //include <SerialDruid.h>
 
 
+#define SERIALGUI_VERSION			1
+#define SERIALGUI_SUBVERSION		2
+
 #define SERIALGUI_APP_NAME				"Druid4Arduino"
 #define SERIALGUI_CONFIG_BAUDRATE		"/Settings/BaudRate"
 #define SERIALGUI_CONFIG_SERIALPORT		"/Settings/SerialPort"

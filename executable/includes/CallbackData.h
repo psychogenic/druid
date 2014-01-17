@@ -22,7 +22,7 @@
 #define CALLBACKDATA_H_
 
 
-#include <SerialDruid.h>
+#include <libDruid/SerialDruid.h>
 #include "Widgets.h"
 
 namespace DRUID {

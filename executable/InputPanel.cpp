@@ -17,7 +17,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <SerialDruid.h>
+#include <libDruid/SerialDruid.h>
 #include "Config.h"
 #include "InputPanel.h"
 #include "Colours.h"
@@ -147,13 +147,6 @@ void InputPanel::setError(wxString errMsg)
 	errTxt->SetLabel(errMsg);
 	errTxt->Wrap(250);
 
-	/*
-	errsizer->Clear(true);
-	errTxt = new wxStaticText(this, wxID_ANY, errMsg);
-	errTxt->SetBackgroundColour(wxColour(wxString(wxT("RED"))));
-	errTxt->Wrap(250);
-	errsizer->Add(errTxt,  0, wxALIGN_CENTER);
-	*/
 	Layout();
 }
 void InputPanel::acceptInput(bool setTo, wxString commandName,
@@ -181,6 +174,13 @@ void InputPanel::acceptInput(bool setTo, wxString commandName,
 			*/
 
 			txt_input->SetValidator(wxTextValidator(wxFILTER_NUMERIC, &input_value));
+		} else if (input_type == InputType_Stream)
+		{
+			SERIALGUI_DEBUG("Looking for stream input... need a file");
+			SERIALGUI_DEBUG("SHOULD HAVE BEEN HANDLED OUTSIDE OF HERE");
+			return;
+
+
 		} else {
 			SERIALGUI_DEBUG("Accepting ANY input");
 

@@ -22,7 +22,7 @@
 #define SETTINGSDIALOG_H_
 #include "Widgets.h"
 #include <map>
-#include <SerialDruid.h>
+#include <libDruid/SerialDruid.h>
 
 namespace DRUID {
 

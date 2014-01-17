@@ -18,7 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <SerialDruid.h>
+#include <libDruid/SerialDruid.h>
 #include <wx/url.h>
 #include <iostream>
 #include "Config.h"

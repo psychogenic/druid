@@ -18,10 +18,11 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <SerialDruid.h>
+#include <libDruid/SerialDruid.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <boost/algorithm/string/case_conv.hpp>
+#include <boost/lexical_cast.hpp>
 #include <wx/config.h>
 #include <wx/hyperlink.h>
 #include "MainWindow.h"
@@ -861,13 +862,13 @@ void MainWindow::OnQuit(wxCommandEvent&) {
 void MainWindow::OnAbout(wxCommandEvent& evt)
 {
 
-	wxString msg(wxT("Druid4Arduino Copyright (C) 2013 Pat Deegan, psychogenic.com.\r\n\r\n"));
+	wxString msg(wxT("Druid4Arduino v1.2 Copyright (C) 2013,2014 Pat Deegan, psychogenic.com.\r\n\r\n"));
 
 	msg += wxT("This program comes with ABSOLUTELY NO WARRANTY;\r\n");
 	msg += wxT("This is free software, and you are welcome to redistribute it ");
 	msg += wxT("under certain conditions (see the accompanying LICENSE file or refer to the GNU GPL v.3)\r\n\r\n");
 
-	msg += wxT("http://flyingcarsandstuff.com/projects/druid/");
+	msg += wxT("http://flyingcarsandstuff.com/projects/druid4arduino/");
 
 	wxMessageBox(msg,
                  wxT("About Druid4Arduino"), wxOK | wxICON_INFORMATION );
@@ -1044,7 +1045,9 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 	touchLastInteraction();
 	DRUID::SerialUIUserPtr serial_user = connection->serialUser();
 
-	//
+
+	DRUID_DEBUG2("Doing send+rcv for", command);
+
 	if ( (! serial_user->sendAndReceive(command)) || serial_user->hasError())
 	{
 		wxString errMsg(DRUID_STDSTRING_TOWX(serial_user->errorMessage()));
@@ -1058,30 +1061,210 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 	wxString cmdName(DRUID_STDSTRING_TOWX(command));
 	if (serial_user->inputRequired())
 	{
-		oldFocus = this->FindFocus();
-		awaiting_input = true;
-		DRUID::UserInputType reqType = serial_user->inputRequiredType() ;
-		if (reqType == DRUID::InputType_Numeric)
-		{
-			SetStatusText(numericInputRequired);
-		} else if (reqType == DRUID::InputType_Integer)
-		{
-			SetStatusText(integerInputRequired);
-		} else {
 
-			SetStatusText(inputRequired);
+		serial_user->flushReceiveBuffer();
+		serial_user->setAutoReplaceLastMessage(false);
+
+		{ // may have more than a single input to enter, so we do/while it...
+
+			DRUID_DEBUG("Need input...");
+			oldFocus = this->FindFocus();
+			awaiting_input = true;
+			DRUID::UserInputType reqType = serial_user->inputRequiredType();
+
+			// get the name from the prompt, if possible.
+			if (serial_user->inputRequiredPromptString().size()) {
+				cmdName =
+						DRUID_STDSTRING_TOWX(serial_user->inputRequiredPromptString());
+			}
+
+			bool streamSuccess;
+			switch (reqType) {
+			case DRUID::InputType_Numeric:
+				DRUID_DEBUG("Numeric input required");
+				SetStatusText(numericInputRequired);
+				break;
+
+			case DRUID::InputType_Integer:
+				DRUID_DEBUG("Numeric (int) input required");
+				SetStatusText(integerInputRequired);
+				break;
+
+			case DRUID::InputType_Stream:
+
+				DRUID_DEBUG("Want a stream (file) upload");
+
+				// little bit different, this one... we need to select a file and stream its contents in...
+
+				awaiting_input = false;
+				streamSuccess = sendFileStream();
+				// outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
+				return streamSuccess;
+				break;
+
+			default:
+				DRUID_DEBUG("String input required");
+				SetStatusText(inputRequired);
+				break;
+
+			}
+
+
+			input->acceptInput(true, cmdName, reqType);
+
+
 		}
-		input->acceptInput(true, cmdName, reqType);
+
 	} else {
 
 		wxString stat(cmdName);
 		stat += runStatusDone;
 		SetStatusText(stat);
-
 		outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
+
+
+		serial_user->setAutoReplaceLastMessage(true);
 	}
+
+
 	return true;
 
+}
+
+#define MAINWINDOW_SENDSTREAM_BUFFER_SIZE		32
+
+bool MainWindow::sendFileStream()
+{
+	const DRUIDString cancelStreaming("0");
+	uint8_t sendBuffer[MAINWINDOW_SENDSTREAM_BUFFER_SIZE];
+
+	DRUID::SerialUIUserPtr serial_user = connection->serialUser();
+
+
+	wxFileDialog * selectFileDialog = new wxFileDialog(this,
+			wxT("Select file to use for upload"), wxEmptyString,
+			wxEmptyString, wxT("Text files (*.txt)|*.txt|CSV files (*.csv)|*.csv|All files|*.*"),
+			wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+
+
+
+	if (selectFileDialog->ShowModal() != wxID_OK) {
+		serial_user->sendAndReceive(cancelStreaming, true);
+		return false;
+	}
+
+
+
+	wxString fileName = selectFileDialog->GetPath();
+
+	wxFile fileHandle;
+	if (!fileHandle.Open(fileName.c_str(), wxFile::read)) {
+		wxString errMsg(wxT("Could not open file "));
+		errMsg += fileName;
+		wxMessageDialog *dial = new wxMessageDialog(NULL, errMsg,
+				wxT("Can't read file"), wxOK | wxICON_ERROR);
+		dial->ShowModal();
+		serial_user->sendAndReceive(cancelStreaming, true);
+		return false;
+	}
+
+	wxFileOffset fileLen = fileHandle.Length();
+
+	if (fileLen < 1)
+	{
+		// forget this
+		serial_user->sendAndReceive(cancelStreaming, true);
+		return false;
+	}
+
+	DRUIDString lenAsStr;
+	try {
+		lenAsStr = boost::lexical_cast<DRUIDString>(fileLen);
+	} catch (boost::bad_lexical_cast & e)
+	{
+		// could not cast string??
+		serial_user->sendAndReceive(cancelStreaming, true);
+		return false;
+	}
+
+	// seems it worked... send len:
+	serial_user->send(lenAsStr, true);
+
+
+	size_t curPos = 0;
+
+	serial_user->setAutoReplaceLastMessage(false);
+	serial_user->checkForLastMessage();
+	// outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
+	serial_user->flushReceiveBuffer();
+	bool curEOTChecks = serial_user->eotChecks();
+	serial_user->setEotChecks(false);
+	serial_user->setAutoReplaceLastMessage(false);
+
+	DRUID_DEBUG2("Reading file of len ", fileLen);
+
+	// wait a while between each send, to allow for sending and processing
+	// set a wait time, per byte, related to baud rate
+	size_t waitTimePerByte = 20 * 8 * 1000000  / baud_rate ;
+
+	DRUID_DEBUG2("Will wait between block sends (us/byte):", waitTimePerByte);
+
+
+	wxString statusSuffixStr(_T("/") + DRUID_STDSTRING_TOWX(lenAsStr));
+	wxString statusPosStr;
+	{
+		wxBusyCursor wait;
+		DRUIDString curPosStr;
+
+		while (curPos < fileLen) {
+			DRUID_DEBUG2("*** reading from pos ", curPos);
+
+			size_t numToRead =
+					(MAINWINDOW_SENDSTREAM_BUFFER_SIZE < (fileLen - curPos)) ?
+							MAINWINDOW_SENDSTREAM_BUFFER_SIZE :
+							(fileLen - curPos);
+
+			size_t numRead = fileHandle.Read(sendBuffer, numToRead);
+			if (numRead < 1) {
+				break;
+			}
+			serial_user->send(sendBuffer, numRead);
+			usleep(waitTimePerByte * numRead);
+
+			curPos += numRead;
+
+			try {
+				curPosStr = boost::lexical_cast<DRUIDString>(curPos);
+				statusPosStr = DRUID_STDSTRING_TOWX(curPosStr) + statusSuffixStr;
+				SetStatusText(statusPosStr);
+
+			} catch (boost::bad_lexical_cast & e)
+			{
+
+			}
+
+
+			wxYield();
+			touchLastInteraction();
+
+		}
+	}
+
+	statusPosStr += _T("  Complete !");
+	SetStatusText(statusPosStr);
+
+	fileHandle.Close();
+
+	serial_user->setEotChecks(curEOTChecks);
+
+	// serial_user->sendAndReceive("", true);
+	serial_user->checkForLastMessage();
+	outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
+
+
+	serial_user->setAutoReplaceLastMessage(true);
+
+	return true;
 }
 
 void MainWindow::OnOutputClear(wxCommandEvent& event)
@@ -1174,14 +1357,17 @@ void MainWindow::inputReceivedFromPanel(wxString rcvdInput)
 	std::string cmd(rcvdInput.mb_str());
 
 
+	input->acceptInput(false);
 	awaiting_input = false;
+
+
 	if ( executeCommand(cmd))
 	{
 
-		input->acceptInput(false);
 		SetStatusText(inputReceived);
 	} else {
 
+		// input->acceptInput(true);
 		DRUID::SerialUIUserPtr serial_user = connection->serialUser();
 		if (serial_user->hasError())
 		{
@@ -1194,6 +1380,10 @@ void MainWindow::inputReceivedFromPanel(wxString rcvdInput)
 
 	}
 
+
+	// DRUID::SerialUIUserPtr serial_user = connection->serialUser();
+	// serial_user->checkForLastMessage();
+	// outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
 
 	if (oldFocus)
 		oldFocus->SetFocus();

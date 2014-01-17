@@ -19,7 +19,7 @@
  */
 
 
-#include <SerialDruid.h>
+#include <libDruid/SerialDruid.h>
 
 #ifdef POSIX
 #include <termios.h>
