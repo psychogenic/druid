@@ -27,7 +27,7 @@ enum {
 };
 
 HelpDialog::HelpDialog() :
-		wxDialog(NULL, -1, _T("Help"), wxDefaultPosition, wxSize(SERIALGUI_HELPDIALOG_WIDTH, SERIALGUI_HELPDIALOG_HEIGHT),
+		wxDialog(NULL, -1, _T("Help"), wxDefaultPosition, wxSize(DRUID4ARDUINO_HELPDIALOG_WIDTH, DRUID4ARDUINO_HELPDIALOG_HEIGHT),
 		wxDEFAULT_DIALOG_STYLE | wxOK | wxCANCEL| wxICON_QUESTION | wxRESIZE_BORDER) {
 
 	wxBoxSizer *vbox = new wxBoxSizer(wxVERTICAL);

@@ -52,7 +52,7 @@ void SettingsDialog::setupBaudMap()
 
 
 SettingsDialog::SettingsDialog(const wxString & title) :
-		wxDialog(NULL, -1, title, wxDefaultPosition, wxSize(SERIALGUI_SETTINGSDIAL_WIDTH, SERIALGUI_SETTINGSDIAL_HEIGHT),
+		wxDialog(NULL, -1, title, wxDefaultPosition, wxSize(DRUID4ARDUINO_SETTINGSDIAL_WIDTH, DRUID4ARDUINO_SETTINGSDIAL_HEIGHT),
 				wxDEFAULT_DIALOG_STYLE | wxOK | wxCANCEL| wxICON_QUESTION | wxRESIZE_BORDER) {
 
 
@@ -179,7 +179,7 @@ SettingDetails SettingsDialog::getDetails(bool firstTimeUse) {
 		greetings_text->Show(true);
 		get_counted_check->Show(true);
 		count_me_text->Show(true);
-		SetSize(SERIALGUI_SETTINGSDIAL_WIDTH, SERIALGUI_SETTINGSDIAL_HEIGHT_FIRSTTIME);
+		SetSize(DRUID4ARDUINO_SETTINGSDIAL_WIDTH, DRUID4ARDUINO_SETTINGSDIAL_HEIGHT_FIRSTTIME);
 
 	} else {
 		count_me_text->Show(false);
@@ -228,11 +228,11 @@ SettingDetails SettingsDialog::getDetails(bool firstTimeUse) {
 
 	if (firstTimeUse && get_counted_check->GetValue())
 	{
-		wxString counterURLStr(wxT(SERIALGUI_COUNTER_URL));
+		wxString counterURLStr(wxT(DRUID4ARDUINO_COUNTER_URL));
 		wxURL counterURL(counterURLStr);
 		if (counterURL.GetError() == wxURL_NOERR)
 		{
-			SERIALGUI_DEBUG("Connecting to counter...");
+			DRUID4ARDUINO_DEBUG("Connecting to counter...");
 			wxInputStream *in_stream;
 
 			in_stream = counterURL.GetInputStream();
@@ -246,7 +246,7 @@ SettingDetails SettingsDialog::getDetails(bool firstTimeUse) {
 			}
 
 		} else {
-			SERIALGUI_DEBUG("Could not connect to counter, aborting.");
+			DRUID4ARDUINO_DEBUG("Could not connect to counter, aborting.");
 		}
 	}
 

@@ -24,21 +24,21 @@
 //include <SerialDruid.h>
 
 
-#define SERIALGUI_VERSION			1
-#define SERIALGUI_SUBVERSION		2
+#define DRUID4ARDUINO_VERSION			1
+#define DRUID4ARDUINO_SUBVERSION		2
 
-#define SERIALGUI_APP_NAME				"Druid4Arduino"
-#define SERIALGUI_CONFIG_BAUDRATE		"/Settings/BaudRate"
-#define SERIALGUI_CONFIG_SERIALPORT		"/Settings/SerialPort"
+#define DRUID4ARDUINO_APP_NAME				"Druid4Arduino"
+#define DRUID4ARDUINO_CONFIG_BAUDRATE		"/Settings/BaudRate"
+#define DRUID4ARDUINO_CONFIG_SERIALPORT		"/Settings/SerialPort"
 
 
-#ifdef SERIALGUI_DEBUG_ENABLE
+#ifdef DRUID4ARDUINO_DEBUG_ENABLE
 #include <iostream>
-#define SERIALGUI_DEBUG(msg)			std::cerr << msg << std::endl;
-#define SERIALGUI_DEBUG2(msg, msg2)		std::cerr << msg << ":" << msg2 << std::endl;
+#define DRUID4ARDUINO_DEBUG(msg)			std::cerr << msg << std::endl;
+#define DRUID4ARDUINO_DEBUG2(msg, msg2)		std::cerr << msg << ":" << msg2 << std::endl;
 #else
-#define SERIALGUI_DEBUG(msg)			;
-#define SERIALGUI_DEBUG2(msg, msg2)		;
+#define DRUID4ARDUINO_DEBUG(msg)			;
+#define DRUID4ARDUINO_DEBUG2(msg, msg2)		;
 #endif
 
 

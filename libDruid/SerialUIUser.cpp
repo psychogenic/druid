@@ -162,7 +162,7 @@ SerialUIControlStrings SerialUIUser::enterProgramMode()
 	eot_checks_enabled = false;
 	this->send(command_mode_program);
 
-	time_t maxTime = time(NULL) + SERIALGUI_MAX_RESPONSE_DELAY_SECONDS;
+	time_t maxTime = time(NULL) + DRUID4ARDUINO_MAX_RESPONSE_DELAY_SECONDS;
 	usleep(300000);
 
 
@@ -294,7 +294,7 @@ void SerialUIUser::serialReceived(char* buffer, size_t bytes_transferred) {
 		return ;
 	}
 
-#ifdef SERIALGUI_DEBUG_ENABLE
+#ifdef DRUID4ARDUINO_DEBUG_ENABLE
 	for (size_t i=0; i< bytes_transferred; i++)
 	{
 		DRUID_DEBUGVERBOSE(buffer[i]);

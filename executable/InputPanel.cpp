@@ -163,7 +163,7 @@ void InputPanel::acceptInput(bool setTo, wxString commandName,
 
 		if (input_type==InputType_Numeric || input_type==InputType_Integer)
 		{
-			SERIALGUI_DEBUG("Accepting NUMERIC input");
+			DRUID4ARDUINO_DEBUG("Accepting NUMERIC input");
 
 			inputPrefixTxt->SetLabel(wxT("#"));
 			/*
@@ -176,13 +176,13 @@ void InputPanel::acceptInput(bool setTo, wxString commandName,
 			txt_input->SetValidator(wxTextValidator(wxFILTER_NUMERIC, &input_value));
 		} else if (input_type == InputType_Stream)
 		{
-			SERIALGUI_DEBUG("Looking for stream input... need a file");
-			SERIALGUI_DEBUG("SHOULD HAVE BEEN HANDLED OUTSIDE OF HERE");
+			DRUID4ARDUINO_DEBUG("Looking for stream input... need a file");
+			DRUID4ARDUINO_DEBUG("SHOULD HAVE BEEN HANDLED OUTSIDE OF HERE");
 			return;
 
 
 		} else {
-			SERIALGUI_DEBUG("Accepting ANY input");
+			DRUID4ARDUINO_DEBUG("Accepting ANY input");
 
 
 			inputPrefixTxt->SetLabel(wxT("\"\""));

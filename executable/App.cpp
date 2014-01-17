@@ -30,7 +30,7 @@ bool App::OnInit()
 
 
 
-	MainWindow *frame = new MainWindow(_T(SERIALGUI_APP_NAME),  wxPoint(100, 75), wxSize(680, 550) );
+	MainWindow *frame = new MainWindow(_T(DRUID4ARDUINO_APP_NAME),  wxPoint(100, 75), wxSize(680, 550) );
     frame->Show( true );
     SetTopWindow( frame );
     return true;

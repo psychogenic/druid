@@ -170,7 +170,7 @@ void SerialUser::clear()
 
 }
 bool SerialUser::sendAndReceive(const DRUIDString& sendMessage, bool addTerminator, time_t timeoutSeconds) {
-	static const DRUIDString timeoutError(SERIALGUI_ERROR_SENDANDRCV_TIMEOUT);
+	static const DRUIDString timeoutError(DRUID4ARDUINO_ERROR_SENDANDRCV_TIMEOUT);
 
 	clear();
 

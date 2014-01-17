@@ -18,19 +18,19 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SERIALGUICONFIG_H_
-#define SERIALGUICONFIG_H_
+#ifndef DRUID4ARDUINOCONFIG_H_
+#define DRUID4ARDUINOCONFIG_H_
 
 #include "libDruid/ExternalIncludes.h"
 
 //
-// define SERIALGUI_DEBUG_ENABLE
-// #undef SERIALGUI_DEBUG_ENABLE
+// define DRUID4ARDUINO_DEBUG_ENABLE
+// #undef DRUID4ARDUINO_DEBUG_ENABLE
 
 
-#define SERIALGUI_MAX_RESPONSE_DELAY_SECONDS		6
+#define DRUID4ARDUINO_MAX_RESPONSE_DELAY_SECONDS		6
 
-#define SERIALGUI_ERROR_SENDANDRCV_TIMEOUT			"Timeout awaiting response"
+#define DRUID4ARDUINO_ERROR_SENDANDRCV_TIMEOUT			"Timeout awaiting response"
 
 
 #if (defined(__GNUWIN32__) || defined(__MINGW32_MAJOR_VERSION))
@@ -44,7 +44,7 @@
 #	error "You MUST define the platform for which we are building using PLATFORM_{LINUX,MAC,WINDOWS}"
 #endif
 
-#ifdef SERIALGUI_DEBUG_ENABLE
+#ifdef DRUID4ARDUINO_DEBUG_ENABLE
 #include <iostream>
 #define DRUID_DEBUG(msg) std::cerr << msg << std::endl;
 #define DRUID_DEBUG2(msg1, msg2) std::cerr << msg1 << ":" << msg2 << std::endl;
@@ -69,14 +69,14 @@
 #endif
 
 #ifdef PLATFORM_LINUX
-#define SERIALGUI_COUNTER_URL		"http://flyingcarsandstuff.com/projects/SerialGUI/counter?os=Linux"
+#define DRUID4ARDUINO_COUNTER_URL		"http://flyingcarsandstuff.com/projects/SerialGUI/counter?os=Linux"
 #endif
 #ifdef PLATFORM_MAC
-#define  SERIALGUI_COUNTER_URL		"http://flyingcarsandstuff.com/projects/SerialGUI/counter?os=Mac"
+#define  DRUID4ARDUINO_COUNTER_URL		"http://flyingcarsandstuff.com/projects/SerialGUI/counter?os=Mac"
 #endif
 #ifdef PLATFORM_WINDOWS
-#define  SERIALGUI_COUNTER_URL		"http://flyingcarsandstuff.com/projects/SerialGUI/counter?os=Win&rid="
+#define  DRUID4ARDUINO_COUNTER_URL		"http://flyingcarsandstuff.com/projects/SerialGUI/counter?os=Win&rid="
 #endif
 
 
-#endif /* SERIALGUICONFIG_H_ */
+#endif /* DRUID4ARDUINOCONFIG_H_ */

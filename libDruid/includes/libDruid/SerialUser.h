@@ -63,7 +63,7 @@ public:
 
 
 
-	bool sendAndReceive(const DRUIDString & sendMessage, bool addTerminator=true, time_t timeoutSeconds=SERIALGUI_MAX_RESPONSE_DELAY_SECONDS);
+	bool sendAndReceive(const DRUIDString & sendMessage, bool addTerminator=true, time_t timeoutSeconds=DRUID4ARDUINO_MAX_RESPONSE_DELAY_SECONDS);
 
 
 	/* SerialListener interface */

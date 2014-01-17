@@ -26,8 +26,8 @@
 
 namespace DRUID {
 
-#define SERIALGUI_HELPDIALOG_WIDTH		600
-#define SERIALGUI_HELPDIALOG_HEIGHT		500
+#define DRUID4ARDUINO_HELPDIALOG_WIDTH		600
+#define DRUID4ARDUINO_HELPDIALOG_HEIGHT		500
 
 class HelpDialog  : public wxDialog {
 public:

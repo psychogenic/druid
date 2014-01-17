@@ -213,7 +213,7 @@ MainWindow::MainWindow(const wxString& title, const wxPoint& pos,
 	wxBitmapButton * siteButton = new wxBitmapButton(this, ID_SiteButton, my_icon);
 
 	siteButton->SetBackgroundColour(darkBg);
-	siteButton->SetToolTip(wxT(SERIALGUI_APP_NAME));
+	siteButton->SetToolTip(wxT(DRUID4ARDUINO_APP_NAME));
 
 	outputButtonsSizer->Add(siteButton, wxSizerFlags(1).Expand().Border(wxALL, 5));
 
@@ -456,7 +456,7 @@ void MainWindow::doReInit()
 
 	if (serial_port.size() && sEnumerator.portExists(serial_port))
 	{
-		SERIALGUI_DEBUG("Connecting");
+		DRUID4ARDUINO_DEBUG("Connecting");
 		wxString connMsg(wxT("Connecting to "));
 		connMsg += DRUID_STDSTRING_TOWX(serial_port);
 		SetStatusText(connMsg);
@@ -491,7 +491,7 @@ void MainWindow::doReInit()
 	if (! connection)
 	{
 		currentlyEnabledSUIWindown()->setError(wxT("Could not create new connection package"));
-		SERIALGUI_DEBUG("Could not create new connection package");
+		DRUID4ARDUINO_DEBUG("Could not create new connection package");
 		SetStatusText(wxT("Could not create new connection package"));
 		return;
 	}
@@ -531,7 +531,7 @@ void MainWindow::OnMenuCrawlTimer(wxTimerEvent & event)
 
 	if(connection->ping(3))
 	{
-		SERIALGUI_DEBUG2("Device seems to be alive on ", serial_port);
+		DRUID4ARDUINO_DEBUG2("Device seems to be alive on ", serial_port);
 
 		//= ;
 		std::string inBuf(serial_user->incomingBuffer());
@@ -1096,9 +1096,10 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 
 				// little bit different, this one... we need to select a file and stream its contents in...
 
-				awaiting_input = false;
 				streamSuccess = sendFileStream();
 				// outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
+
+				awaiting_input = false;
 				return streamSuccess;
 				break;
 
@@ -1458,11 +1459,11 @@ void MainWindow::OnToggleRawInput(wxCommandEvent& event)
 
 void MainWindow::saveConfig()
 {
-	static wxString baudRateStr(wxT(SERIALGUI_CONFIG_BAUDRATE));
-	static wxString serialPortStr(wxT(SERIALGUI_CONFIG_SERIALPORT));
+	static wxString baudRateStr(wxT(DRUID4ARDUINO_CONFIG_BAUDRATE));
+	static wxString serialPortStr(wxT(DRUID4ARDUINO_CONFIG_SERIALPORT));
 	static std::string rCtor("moc.cinegohcysp ,nageeD taP )C( thgirypoC");
 
-	  wxConfig *config = new wxConfig(wxT(SERIALGUI_APP_NAME));
+	  wxConfig *config = new wxConfig(wxT(DRUID4ARDUINO_APP_NAME));
 	  wxString str;
 	  if (! config->Read(wxT("creator"), &str))
 	  {
@@ -1478,10 +1479,10 @@ void MainWindow::saveConfig()
 }
 bool MainWindow::loadConfig()
 {
-	static wxString baudRateStr(wxT(SERIALGUI_CONFIG_BAUDRATE));
-	static wxString serialPortStr(wxT(SERIALGUI_CONFIG_SERIALPORT));
+	static wxString baudRateStr(wxT(DRUID4ARDUINO_CONFIG_BAUDRATE));
+	static wxString serialPortStr(wxT(DRUID4ARDUINO_CONFIG_SERIALPORT));
 
-	wxConfig *config = new wxConfig(wxT(SERIALGUI_APP_NAME));
+	wxConfig *config = new wxConfig(wxT(DRUID4ARDUINO_APP_NAME));
 	wxString str;
 	if (!config->Read(wxT("creator"), &str)) {
 		delete config;
