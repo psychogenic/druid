@@ -76,6 +76,7 @@ SerialUIUser::SerialUIUser() : SerialUser(),
 		message_rcvd(false),
 		last_rcvdcheck_len(0),
 		eot_checks_enabled(true),
+		auto_replace_last_message(true),
 		eot_str(SUI_SERIALUI_PROG_ENDOFTRANSMISSION)
 {
 
@@ -89,6 +90,7 @@ SerialUIUser::SerialUIUser(boost::asio::io_service& io_service,
 			message_rcvd(false),
 			last_rcvdcheck_len(0),
 			eot_checks_enabled(true),
+			auto_replace_last_message(true),
 			eot_str(SUI_SERIALUI_PROG_ENDOFTRANSMISSION)
 {
 }
@@ -98,7 +100,6 @@ SerialUIUser::~SerialUIUser() {
 
 }
 
-#include <boost/regex.hpp>
 SerialUIControlStrings SerialUIUser::setupProgModeStrings(DRUIDString & progRetStr)
 {
 	// TODO:FIXME
@@ -126,8 +127,29 @@ SerialUIControlStrings SerialUIUser::setupProgModeStrings(DRUIDString & progRetS
 			ctrl_strings.prompt_str = sepList[10];
 			ctrl_strings.eot_str = sepList[11];
 
+			if (sepList.size() >= 13 && sepList[12].size())
+				ctrl_strings.more_stream = sepList[12];
+			else
+				ctrl_strings.more_stream = "~N/A~";
+
 			eot_str = ctrl_strings.eot_str;
 		}
+
+
+		DRUID_DEBUG2("version", ctrl_strings.version);
+		DRUID_DEBUG2("up_key", ctrl_strings.up_key);
+		DRUID_DEBUG2("exit_key", ctrl_strings.exit_key);
+		DRUID_DEBUG2("error", ctrl_strings.error);
+		DRUID_DEBUG2("help_key", ctrl_strings.help_key);
+		DRUID_DEBUG2("prefix_command", ctrl_strings.prefix_command);
+		DRUID_DEBUG2("prefix_submenu", ctrl_strings.prefix_submenu);
+		DRUID_DEBUG2("help_sep", ctrl_strings.help_sep);
+		DRUID_DEBUG2("more_str", ctrl_strings.more_str);
+		DRUID_DEBUG2("more_stream", ctrl_strings.more_stream);
+		DRUID_DEBUG2("more_num", ctrl_strings.more_num);
+		DRUID_DEBUG2("prompt_str", ctrl_strings.prompt_str);
+		DRUID_DEBUG2("eot_str", ctrl_strings.eot_str);
+
 	}
 	return ctrl_strings;
 }
@@ -264,7 +286,6 @@ SerialUIControlStrings SerialUIUser::enterProgramMode()
 
 void SerialUIUser::serialReceived(char* buffer, size_t bytes_transferred) {
 
-	static const size_t eot_str_len = eot_str.length();
 
 	// DRUID_DEBUG2("SerialUIUser::serialReceived", bytes_transferred);
 	if (! bytes_transferred)
@@ -281,11 +302,20 @@ void SerialUIUser::serialReceived(char* buffer, size_t bytes_transferred) {
 #endif
 
 	// append this data to the incoming msg
+	last_msg.lock();
 	incoming_message.append(buffer, bytes_transferred);
-	if (! eot_checks_enabled) {
-		// nothing left to do.
-		return;
-	}
+
+	last_msg.unlock();
+
+	if (eot_checks_enabled)
+		checkForLastMessage();
+
+}
+
+void SerialUIUser::checkForLastMessage()
+{
+
+	static const size_t eot_str_len = eot_str.length();
 
 	// am checking for EOTs, so do it:
 
@@ -299,31 +329,29 @@ void SerialUIUser::serialReceived(char* buffer, size_t bytes_transferred) {
 
 	DRUID_DEBUG("Found EOT marker!");
 
-	// Get safe (locked) access to raw message
-
-
 	DRUID_DEBUG("SerialUIUser::serialReceived locking");
 	last_msg.lock();
 	DRUID_DEBUG("SerialUIUser::serialReceived locked");
+
+	// Get safe (locked) access to raw message
+	DRUIDString newContents;
+	newContents.reserve(findIter - incoming_message.begin());
+	// actually copy the data from incomming to new contents container
+	std::copy(incoming_message.begin(), findIter,
+				std::back_inserter(newContents));
+
+
+	DRUID_DEBUG2("LAST MESSAGE IS", newContents);
+
+
 	// clear the last message
 	DRUIDString & dirAccessLastMsg = last_msg.directAccess();
-	dirAccessLastMsg.clear();
+	if (auto_replace_last_message)
+		dirAccessLastMsg = newContents;
+	else
+		dirAccessLastMsg += newContents;
 
-	// copy the newly arrived message to last_message, first ensure we have enough space
-	dirAccessLastMsg.reserve(findIter - incoming_message.begin());
-
-	// actually copy the data from incomming to last_msg
-	std::copy(incoming_message.begin(), findIter,
-			std::back_inserter(dirAccessLastMsg));
-
-
-	DRUID_DEBUG2("LAST MESSAGE IS", dirAccessLastMsg);
-
-	last_msg.unlock(); // stay away from "dirAccessLastMsg" from now on
-	DRUID_DEBUG("SerialUIUser::serialReceived unlocked");
-
-
-	findIter += eot_str_len;
+	findIter += eot_str_len; // skip it...
 
 	if (findIter != incoming_message.end()) {
 		// we have extra stuff after the EOT, stash it for later.
@@ -335,6 +363,11 @@ void SerialUIUser::serialReceived(char* buffer, size_t bytes_transferred) {
 		incoming_message = newIncoming;
 		DRUID_DEBUG2("Incoming overflow", incoming_message);
 	}
+
+
+	last_msg.unlock(); // stay away from "dirAccessLastMsg" from now on
+	DRUID_DEBUG("SerialUIUser::serialReceived unlocked");
+
 
 }
 
@@ -427,17 +460,22 @@ void SerialUIUser::checkIfRequiresInput()
 
 	const DRUIDString moreStringDataPrompt(ctrl_strings.more_str);
 	const DRUIDString moreNumericDataPrompt(ctrl_strings.more_num);
+	const DRUIDString moreStreamDataPrompt(ctrl_strings.more_stream);
 	const DRUIDString regexStr("^(.*)(("
 							+ moreStringDataPrompt
 							+ ")|("
-							+ moreNumericDataPrompt + "))\\s*$");
+							+ moreNumericDataPrompt
+							+ ")|("
+							+ moreStreamDataPrompt
+							+ "))\\s*$");
 	const boost::regex reqInputRegex(regexStr, boost::regex::perl);
 
 	required_input = InputType_None;
 
 	DRUID_DEBUG2("searching for moredata", moreStringDataPrompt);
 	DRUID_DEBUG2("searching for morenumdata", moreNumericDataPrompt);
-	DRUID_DEBUG2("using regex", regexStr);
+	DRUID_DEBUG2("searching for morestreamdata", moreStreamDataPrompt);
+	DRUID_DEBUG2("using regex\n\t", regexStr);
 
 	DRUIDString lastLine;
 
@@ -447,7 +485,8 @@ void SerialUIUser::checkIfRequiresInput()
 	{
 		boost::smatch what;
 		// DRUID_DEBUG2("checking line", *iter);
-
+		DRUID_DEBUGVERBOSE("checking line:");
+		DRUID_DEBUGVERBOSE(*iter);
 		if (boost::regex_match(*iter, what, reqInputRegex))
 		{
 			DRUID_DEBUG("got a match...");
@@ -472,10 +511,12 @@ void SerialUIUser::checkIfRequiresInput()
 				required_input = InputType_Numeric;
 				DRUID_DEBUG("Need num input...");
 				return;
+			} else if (what[5].length())
+			{
+				required_input = InputType_Stream;
+				DRUID_DEBUG("Need stream input...");
+				return;
 			}
-
-
-
 
 		} else {
 

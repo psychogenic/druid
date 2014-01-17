@@ -24,7 +24,7 @@
 #include "libDruid/ExternalIncludes.h"
 
 //
-#define SERIALGUI_DEBUG_ENABLE
+// define SERIALGUI_DEBUG_ENABLE
 // #undef SERIALGUI_DEBUG_ENABLE
 
 

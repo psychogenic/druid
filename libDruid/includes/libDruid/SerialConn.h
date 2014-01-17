@@ -21,10 +21,11 @@
 #ifndef SERIALCONN_H_
 #define SERIALCONN_H_
 
+#include <inttypes.h>
 #include "libDruid/ExternalIncludes.h"
 #include "libDruid/SerialListener.h"
 
-#define DRUID_SERIALCONN_MAX_READ_LEN	512
+#define DRUID_SERIALCONN_MAX_READ_LEN	2048
 namespace DRUID {
 
 typedef boost::asio::serial_port	boost_serial;
@@ -38,6 +39,7 @@ public:
 	virtual ~SerialConn();
 
 	void send(const DRUIDString & aString);
+	void send(uint8_t * rawBytesBuffer, size_t len);
 
 	void write(const char msg);
 
@@ -51,6 +53,7 @@ private:
 	void read_done(const boost::system::error_code& error, size_t bytes_transferred);
 
 	void do_write_string(const DRUIDString & msg);
+	void do_write_raw(uint8_t * rawByteBuffer, size_t len);
 
 	void do_write(const char msg);
 	void write_begin(void);
@@ -73,7 +76,7 @@ private:
 	boost::asio::io_service& sconn_ioserv; // the main IO service that runs this connection
 	boost::asio::serial_port serialPort; // the serial port this instance is connected to
 	char msg_inbuffer[DRUID_SERIALCONN_MAX_READ_LEN]; // data read from the socket
-	std::deque<char> msgs_outbound; // buffered write data
+	std::deque<uint8_t> msgs_outbound; // buffered write data
 	SerialListener * listener;
 
 };

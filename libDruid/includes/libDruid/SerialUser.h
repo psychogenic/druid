@@ -79,6 +79,7 @@ public:
 
 	bool send(const DRUIDString & aString, bool addTerminator=true);
 	bool send(const char aChar);
+	bool send(uint8_t * buffer, size_t len);
 
 
 	/* error reporting */

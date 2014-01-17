@@ -35,6 +35,7 @@ typedef enum SerialUIUserInputTypeEnum {
 	InputType_String,
 	InputType_Numeric,
 	InputType_Integer,
+	InputType_Stream,
 	InputType_Date
 } UserInputType ;
 
@@ -62,6 +63,12 @@ public:
 				const DRUIDString& device);
 	virtual ~SerialUIUser();
 
+	bool autoReplaceLastMessage() { return auto_replace_last_message;}
+	void setAutoReplaceLastMessage(bool setTo) { auto_replace_last_message = setTo;}
+
+
+	bool eotChecks() { return eot_checks_enabled;}
+	void setEotChecks(bool setTo) { eot_checks_enabled = setTo;}
 
 	virtual bool messageReceived();
 	virtual void lastMessageClear();
@@ -71,6 +78,7 @@ public:
 	virtual const DRUIDString & lastMessageRef();
 
 
+	void checkForLastMessage();
 	size_t incomingBufferSize() { return incoming_message.size(); }
 	const DRUIDString & incomingBuffer() { return incoming_message;}
 
@@ -107,7 +115,9 @@ private:
 	size_t last_rcvdcheck_len;
 	DRUIDString incoming_message;
 	bool eot_checks_enabled;
+	bool auto_replace_last_message;
 	DRUIDString eot_str;
+
 
 	LockedLastMessage last_msg;
 	SerialUIControlStrings ctrl_strings;

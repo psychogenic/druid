@@ -96,6 +96,17 @@ void SerialConn::send(const DRUIDString & aString)
 	return;
 }
 
+void SerialConn::send(uint8_t * rawBytesBuffer, size_t len)
+{
+	if (online)
+	{
+		sconn_ioserv.post(boost::bind(&SerialConn::do_write_raw, this, rawBytesBuffer, len));
+	}
+
+	return;
+}
+
+
 void SerialConn::close()
 {
 	DRUID_DEBUG("CLOSING");
@@ -146,6 +157,21 @@ void SerialConn::do_write(const char msg) { // callback to handle write call fro
 }
 
 
+void SerialConn::do_write_raw(uint8_t * rawByteBuffer, size_t len)
+{
+	bool was_empty = msgs_outbound.empty();
+	for (size_t i=0; i <len; i++)
+	{
+
+		msgs_outbound.push_back(rawByteBuffer[i]);
+		usleep(200);
+	}
+
+	if (was_empty)
+		write_begin();
+
+}
+
 void SerialConn::do_write_string(const DRUIDString & msg)
 {
 	bool was_empty = msgs_outbound.empty();
@@ -153,7 +179,7 @@ void SerialConn::do_write_string(const DRUIDString & msg)
 	{
 		DRUID_DEBUGVERBOSE('X');
 		DRUID_DEBUGVERBOSE(msg[i]);
-		msgs_outbound.push_back(msg.at(i));
+		msgs_outbound.push_back((uint8_t)(msg.at(i)));
 		usleep(200);
 	}
 	if (was_empty)

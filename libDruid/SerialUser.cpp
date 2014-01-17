@@ -20,6 +20,7 @@
 
 
 #include "libDruid/ExternalIncludes.h"
+#include <inttypes.h>
 #include <iostream>
 #include <boost/regex.hpp>
 #include <unistd.h>
@@ -145,6 +146,22 @@ bool SerialUser::send(const DRUIDString& aString, bool addTerminator) {
 	return true;
 }
 
+
+bool SerialUser::send(uint8_t * buffer, size_t len) {
+
+	static const DRUIDString errNoConn("No serial connection, connect() first!");
+
+	if (! serial_connection)
+	{
+		serialError(errNoConn);
+		return false;
+	}
+
+	DRUID_DEBUG2("Sending raw buffer to serial, len ", len);
+	serial_connection->send(buffer, len);
+
+	return true;
+}
 void SerialUser::clear()
 {
 	clearError();

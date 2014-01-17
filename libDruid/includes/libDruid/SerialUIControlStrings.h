@@ -42,6 +42,7 @@ typedef struct SerialUIControlStringsStruct {
 	DRUIDString more_num;
 	DRUIDString prompt_str;
 	DRUIDString eot_str;
+	DRUIDString more_stream;
 
 } SerialUIControlStrings ;
 
