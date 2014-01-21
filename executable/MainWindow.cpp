@@ -18,6 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #include <libDruid/SerialDruid.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -61,6 +62,11 @@ enum
     ID_SerialPort,
     ID_Baud,
     ID_Settings,
+    ID_UploadStreamRate_Conservative,
+    ID_UploadStreamRate_Standard,
+    ID_UploadStreamRate_Fast,
+    ID_UploadStreamRate_Reckless,
+    ID_UploadStreamRate_Custom,
     ID_Output_Clear,
     ID_Output_Export,
     ID_PingTimer,
@@ -84,7 +90,8 @@ MainWindow::MainWindow(const wxString& title, const wxPoint& pos,
 		suiWinListSizer((wxBoxSizer*)NULL),
 		awaiting_input(false),
 		last_interaction(0),
-		current_menu_depth(0)
+		current_menu_depth(0),
+		upload_rate_delay_factor(UPLOAD_RATE_DELAYFACTOR_STANDARD)
 
 {
 
@@ -261,8 +268,43 @@ void MainWindow::buildMenus()
 
 
 	// EDIT
+
 	wxMenu* menuEdit = new wxMenu;
 	menuEdit->Append(ID_Settings, wxT("&Settings"));
+
+	loadConfig();
+	wxMenu * menuUploadRate = new wxMenu;
+	wxMenuItem * upload_rate_conservative = menuUploadRate->AppendRadioItem(ID_UploadStreamRate_Conservative, wxT("&Conservative"), wxT("Slow but sure uploads"));
+	wxMenuItem * upload_rate_standard = menuUploadRate->AppendRadioItem(ID_UploadStreamRate_Standard, wxT("&Standard"), wxT("Standard upload rate"));
+	wxMenuItem * upload_rate_fast = menuUploadRate->AppendRadioItem(ID_UploadStreamRate_Fast, wxT("&Fast"), wxT("Fast upload rate"));
+	wxMenuItem * upload_rate_reckless = menuUploadRate->AppendRadioItem(ID_UploadStreamRate_Reckless, wxT("&Reckless"), wxT("Really fast upload rate"));
+	wxMenuItem * upload_rate_custom; // may not be needed
+	switch (upload_rate_delay_factor)
+	{
+	case UPLOAD_RATE_DELAYFACTOR_CONSERVATIVE:
+		upload_rate_conservative->Check(true);
+		break;
+	case UPLOAD_RATE_DELAYFACTOR_STANDARD:
+		upload_rate_standard->Check(true);
+		break;
+
+	case UPLOAD_RATE_DELAYFACTOR_FAST:
+		upload_rate_fast->Check(true);
+		break;
+	case UPLOAD_RATE_DELAYFACTOR_RECKLESS:
+		upload_rate_reckless->Check(true);
+		break;
+
+	default:
+		upload_rate_custom = menuUploadRate->AppendRadioItem(ID_UploadStreamRate_Custom, wxT("C&ustom"),
+				wxT("Custom upload rate"));
+		upload_rate_custom->Check(true);
+		break;
+	}
+
+
+	menuEdit->Append(wxID_ANY, wxT("&Upload Rate"), menuUploadRate);
+
 	raw_input_toggle = menuEdit->AppendCheckItem(ID_ToggleRawInput, wxT("&Raw Input"), wxT("Display the raw input field"));
 
 	// HELP
@@ -862,7 +904,7 @@ void MainWindow::OnQuit(wxCommandEvent&) {
 void MainWindow::OnAbout(wxCommandEvent& evt)
 {
 
-	wxString msg(wxT("Druid4Arduino v1.2 Copyright (C) 2013,2014 Pat Deegan, psychogenic.com.\r\n\r\n"));
+	wxString msg(wxT("Druid4Arduino v1.2.1 Copyright (C) 2013,2014 Pat Deegan, psychogenic.com.\r\n\r\n"));
 
 	msg += wxT("This program comes with ABSOLUTELY NO WARRANTY;\r\n");
 	msg += wxT("This is free software, and you are welcome to redistribute it ");
@@ -1132,19 +1174,61 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 
 }
 
-#define MAINWINDOW_SENDSTREAM_BUFFER_SIZE		32
+#define MAINWINDOW_SENDSTREAM_BUFFER_SIZE		24
 
 bool MainWindow::sendFileStream()
 {
 	const DRUIDString cancelStreaming("0");
 	uint8_t sendBuffer[MAINWINDOW_SENDSTREAM_BUFFER_SIZE];
+	std::map<wxString, wxString> wildcardMap;
+	wxString extension, defaultDir, defaultFile, wildcards;
+
+
+	// setup wildcards and defaults, partially based on last uploaded file.
+	wildcardMap[_T("txt")] = wxT("Text (*.txt)|*.txt");
+	wildcardMap[_T("csv")] = wxT("CSV (*.csv)|*.csv");
+	wildcardMap[_T("wav")] = wxT("WAVE (*.wav)|*.wav");
+	wildcardMap[_T("html")] = wxT("HTML (*.html)|*.html");
+
+	if (last_uploaded_filepath.Length())
+	{
+		wxFileName fname(last_uploaded_filepath);
+
+		defaultDir = fname.GetPath();
+		defaultFile = fname.GetFullName();
+		extension = fname.GetExt().Lower();
+
+		if (extension.Length())
+		{
+			// see if this extension is present
+			std::map<wxString, wxString>::iterator findExtIter = wildcardMap.find(extension);
+			if (findExtIter == wildcardMap.end())
+			{
+				// nope, not here... add it
+				wildcardMap[extension] = extension + wxT(" files (*.") + extension + _T(")|*.") + extension ;
+			}
+		}
+
+	}
+
+	for (std::map<wxString, wxString>::iterator wcIter = wildcardMap.begin();
+			wcIter != wildcardMap.end(); wcIter++)
+	{
+		wildcards += (*wcIter).second + _T("|");
+	}
+	// add the all files option
+	wildcards += wxT("All files|*.*");
+
+
+	DRUID_DEBUG2("WILDCARDS IS ", wildcards.mb_str());
+
 
 	DRUID::SerialUIUserPtr serial_user = connection->serialUser();
 
 
 	wxFileDialog * selectFileDialog = new wxFileDialog(this,
-			wxT("Select file to use for upload"), wxEmptyString,
-			wxEmptyString, wxT("Text files (*.txt)|*.txt|CSV files (*.csv)|*.csv|All files|*.*"),
+			wxT("Select file to use for upload"), defaultDir,
+			defaultFile, wildcards,
 			wxFD_OPEN | wxFD_FILE_MUST_EXIST);
 
 
@@ -1157,6 +1241,9 @@ bool MainWindow::sendFileStream()
 
 
 	wxString fileName = selectFileDialog->GetPath();
+
+	configUpdateLastUploadedFilePath(fileName);
+
 
 	wxFile fileHandle;
 	if (!fileHandle.Open(fileName.c_str(), wxFile::read)) {
@@ -1206,7 +1293,8 @@ bool MainWindow::sendFileStream()
 
 	// wait a while between each send, to allow for sending and processing
 	// set a wait time, per byte, related to baud rate
-	size_t waitTimePerByte = 20 * 8 * 1000000  / baud_rate ;
+
+	size_t waitTimePerByte = upload_rate_delay_factor * 8 * 1000000  / baud_rate ;
 
 	DRUID_DEBUG2("Will wait between block sends (us/byte):", waitTimePerByte);
 
@@ -1457,10 +1545,57 @@ void MainWindow::OnToggleRawInput(wxCommandEvent& event)
 	Layout();
 }
 
+
+void MainWindow::OnSelectUploadRateConservative(wxCommandEvent& event)
+{
+
+	upload_rate_delay_factor = UPLOAD_RATE_DELAYFACTOR_CONSERVATIVE;
+	saveConfig();
+
+}
+void MainWindow::OnSelectUploadRateStandard(wxCommandEvent& event)
+{
+
+	upload_rate_delay_factor = UPLOAD_RATE_DELAYFACTOR_STANDARD;
+	saveConfig();
+}
+void MainWindow::OnSelectUploadRateFast(wxCommandEvent& event)
+{
+
+
+	wxMessageDialog *dial = new wxMessageDialog(NULL,
+			wxT("This upload rate may cause transmission failures if the device isn't fast enough to process the data."),
+			wxT("Notice"), wxOK | wxICON_EXCLAMATION);
+	dial->ShowModal();
+
+	upload_rate_delay_factor = UPLOAD_RATE_DELAYFACTOR_FAST;
+	saveConfig();
+
+}
+
+
+void MainWindow::OnSelectUploadRateReckless(wxCommandEvent& event)
+{
+
+
+	wxMessageDialog *dial = new wxMessageDialog(NULL,
+			wxT("This upload rate will probably cause transmission failures unless the device is really fast."),
+			wxT("Warning"), wxOK | wxICON_EXCLAMATION);
+	dial->ShowModal();
+
+	upload_rate_delay_factor = UPLOAD_RATE_DELAYFACTOR_RECKLESS;
+	saveConfig();
+
+}
+
+
+
+
 void MainWindow::saveConfig()
 {
 	static wxString baudRateStr(wxT(DRUID4ARDUINO_CONFIG_BAUDRATE));
 	static wxString serialPortStr(wxT(DRUID4ARDUINO_CONFIG_SERIALPORT));
+	static wxString uploadDelayFactorStr(wxT(DRUID4ARDUINO_CONFIG_UPLOADDELAYFACTOR));
 	static std::string rCtor("moc.cinegohcysp ,nageeD taP )C( thgirypoC");
 
 	  wxConfig *config = new wxConfig(wxT(DRUID4ARDUINO_APP_NAME));
@@ -1474,6 +1609,7 @@ void MainWindow::saveConfig()
 	  }
 	  config->Write(baudRateStr, (int)baud_rate);
 	  config->Write(serialPortStr, DRUID_STDSTRING_TOWX(serial_port));
+	  config->Write(uploadDelayFactorStr, (int)upload_rate_delay_factor);
 
 	  delete config;
 }
@@ -1481,6 +1617,8 @@ bool MainWindow::loadConfig()
 {
 	static wxString baudRateStr(wxT(DRUID4ARDUINO_CONFIG_BAUDRATE));
 	static wxString serialPortStr(wxT(DRUID4ARDUINO_CONFIG_SERIALPORT));
+	static wxString uploadDelayFactorStr(wxT(DRUID4ARDUINO_CONFIG_UPLOADDELAYFACTOR));
+	static wxString lastUploadedFilePathStr(wxT(DRUID4ARDUINO_CONFIG_LASTUPLOADFILEPATH));
 
 	wxConfig *config = new wxConfig(wxT(DRUID4ARDUINO_APP_NAME));
 	wxString str;
@@ -1500,8 +1638,32 @@ bool MainWindow::loadConfig()
 	serial_port = std::string(str.mb_str());
 
 
+	if (! config->Read(uploadDelayFactorStr, (int *)&upload_rate_delay_factor))
+	{
+		upload_rate_delay_factor = UPLOAD_RATE_DELAYFACTOR_STANDARD;
+	}
+
+	config->Read(lastUploadedFilePathStr, &last_uploaded_filepath);
+
+
 	delete config;
 	return true;
+
+}
+
+void MainWindow::configUpdateLastUploadedFilePath(wxString & filepath)
+{
+	static wxString lastUploadedFilePathStr(wxT(DRUID4ARDUINO_CONFIG_LASTUPLOADFILEPATH));
+	if (! filepath.Length())
+		return;
+
+	last_uploaded_filepath = filepath;
+
+	wxConfig *config = new wxConfig(wxT(DRUID4ARDUINO_APP_NAME));
+
+	config->Write(lastUploadedFilePathStr, last_uploaded_filepath);
+
+	delete config;
 
 }
 
@@ -1542,6 +1704,8 @@ void MainWindow::OnRawInputEnter(wxCommandEvent& event)
 
 	raw_input->Clear();
 }
+
+
 BEGIN_EVENT_TABLE(MainWindow, wxFrame)
     EVT_MENU(ID_Settings,  MainWindow::OnSettings)
     EVT_MENU(ID_Quit,  MainWindow::OnQuit)
@@ -1550,6 +1714,10 @@ BEGIN_EVENT_TABLE(MainWindow, wxFrame)
     EVT_MENU(ID_ReInit, MainWindow::OnReInit)
     EVT_MENU(ID_Settings, MainWindow::OnSettings)
     EVT_MENU(ID_ToggleRawInput, MainWindow::OnToggleRawInput)
+    EVT_MENU(ID_UploadStreamRate_Conservative, MainWindow::OnSelectUploadRateConservative)
+    EVT_MENU(ID_UploadStreamRate_Standard, MainWindow::OnSelectUploadRateStandard)
+    EVT_MENU(ID_UploadStreamRate_Fast, MainWindow::OnSelectUploadRateFast)
+    EVT_MENU(ID_UploadStreamRate_Reckless, MainWindow::OnSelectUploadRateReckless)
     EVT_BUTTON(ID_Output_Clear, MainWindow::OnOutputClear)
     EVT_BUTTON(ID_Output_Export, MainWindow::OnOutputExport)
     EVT_BUTTON(ID_SiteButton, MainWindow::OnSiteClick)

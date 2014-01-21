@@ -36,6 +36,13 @@ typedef std::map<DRUID::MenuUID, SUIWindow *> MenuUIDToSUIWindowMap;
 #define DEFAULT_SUIWINDOW_UID	0
 #define MAXIMUM_IDLE_SECS		12
 
+#define UPLOAD_RATE_DELAYFACTOR_CONSERVATIVE		80
+#define UPLOAD_RATE_DELAYFACTOR_STANDARD			35
+#define UPLOAD_RATE_DELAYFACTOR_FAST				20
+#define UPLOAD_RATE_DELAYFACTOR_RECKLESS			5
+
+
+
 class MainWindow  : public wxFrame, public InputPanelReceiver {
 
 public:
@@ -44,7 +51,13 @@ public:
     void OnQuit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
     void OnSettings(wxCommandEvent& event);
+
     void OnToggleRawInput(wxCommandEvent& event);
+    void OnSelectUploadRateConservative(wxCommandEvent& event);
+    void OnSelectUploadRateStandard(wxCommandEvent& event);
+    void OnSelectUploadRateFast(wxCommandEvent& event);
+    void OnSelectUploadRateReckless(wxCommandEvent& event);
+
     void OnHelp(wxCommandEvent& event);
 
     void OnReInit(wxCommandEvent& event);
@@ -104,6 +117,7 @@ private:
 
     void saveConfig();
     bool loadConfig();
+    void configUpdateLastUploadedFilePath(wxString & filepath);
 
     bool sendFileStream();
 
@@ -143,7 +157,8 @@ private:
     wxBitmap up_icon;
     wxBitmap cmd_icon;
     wxBitmap submenu_icon;
-
+    unsigned int upload_rate_delay_factor;
+    wxString last_uploaded_filepath;
 
 
     DECLARE_EVENT_TABLE();
