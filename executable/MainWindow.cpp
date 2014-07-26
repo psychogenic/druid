@@ -904,7 +904,7 @@ void MainWindow::OnQuit(wxCommandEvent&) {
 void MainWindow::OnAbout(wxCommandEvent& evt)
 {
 
-	wxString msg(wxT("Druid4Arduino v1.2.1 Copyright (C) 2013,2014 Pat Deegan, psychogenic.com.\r\n\r\n"));
+	wxString msg(wxT("Druid4Arduino v1.2.3 Copyright (C) 2013,2014 Pat Deegan, psychogenic.com.\r\n\r\n"));
 
 	msg += wxT("This program comes with ABSOLUTELY NO WARRANTY;\r\n");
 	msg += wxT("This is free software, and you are welcome to redistribute it ");
@@ -1167,6 +1167,9 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 
 
 		serial_user->setAutoReplaceLastMessage(true);
+
+		if (serial_user->requestedTerminate())
+			Close(true);
 	}
 
 

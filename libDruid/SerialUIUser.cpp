@@ -115,6 +115,19 @@ SerialUIControlStrings SerialUIUser::setupProgModeStrings(DRUIDString & progRetS
 		if (sepList.size() >= 12)
 		{
 			ctrl_strings.version = sepList[0];
+
+
+			try {
+				// get the expected size of the program strings string
+
+				ctrl_strings.version_num = boost::lexical_cast<float>(ctrl_strings.version);
+				DRUID_DEBUG2("Got prog strings version", ctrl_strings.version_num);
+
+			} catch (boost::bad_lexical_cast &) {
+				DRUID_DEBUG2("Weird cast attempt for version", ctrl_strings.version);
+				ctrl_strings.version_num = 1.0;
+			}
+
 			ctrl_strings.up_key = sepList[1];
 			ctrl_strings.exit_key = sepList[2];
 			ctrl_strings.error = sepList[3];
@@ -127,10 +140,41 @@ SerialUIControlStrings SerialUIUser::setupProgModeStrings(DRUIDString & progRetS
 			ctrl_strings.prompt_str = sepList[10];
 			ctrl_strings.eot_str = sepList[11];
 
-			if (sepList.size() >= 13 && sepList[12].size())
-				ctrl_strings.more_stream = sepList[12];
-			else
-				ctrl_strings.more_stream = "~N/A~";
+
+			ctrl_strings.terminate_gui = "~N/A~";
+			ctrl_strings.more_stream = "~N/A~";
+			if (ctrl_strings.version_num >= 1.11)
+			{
+
+
+				if (sepList.size() >= 14)
+				{
+					if (sepList[12].size())
+						ctrl_strings.more_stream = sepList[12];
+
+
+					if (sepList[13].size())
+						ctrl_strings.terminate_gui = sepList[13];
+
+				} else if (sepList.size() >= 13)
+				{
+					// no stream setup... only terminate_gui...
+					if (sepList[13].size())
+						ctrl_strings.terminate_gui = sepList[12];
+
+				}
+
+
+
+			} else {
+
+				// older version of SerialUI
+				if (sepList.size() >= 13 && sepList[12].size())
+					ctrl_strings.more_stream = sepList[12];
+
+
+			}
+
 
 			eot_str = ctrl_strings.eot_str;
 		}
@@ -148,6 +192,7 @@ SerialUIControlStrings SerialUIUser::setupProgModeStrings(DRUIDString & progRetS
 		DRUID_DEBUG2("more_stream", ctrl_strings.more_stream);
 		DRUID_DEBUG2("more_num", ctrl_strings.more_num);
 		DRUID_DEBUG2("prompt_str", ctrl_strings.prompt_str);
+		DRUID_DEBUG2("terminate_gui", ctrl_strings.terminate_gui);
 		DRUID_DEBUG2("eot_str", ctrl_strings.eot_str);
 
 	}
@@ -378,6 +423,9 @@ bool SerialUIUser::messageReceived() {
 		message_rcvd = true;
 		checkIfMessageWasError();
 		checkIfRequiresInput();
+		if (requestedTerminate())
+			exit(0);
+
 
 	}
 
@@ -452,6 +500,40 @@ bool SerialUIUser::inputRequired(bool forceCheck) {
 		checkIfRequiresInput();
 
 	return required_input != InputType_None;
+}
+
+bool SerialUIUser::requestedTerminate()
+{
+
+	DRUID_DEBUG("SerialUIUser::requestedTerminate()");
+
+
+	const DRUIDString regexStr("^(.*)(" + ctrl_strings.terminate_gui +")\\s*$");
+	const boost::regex reqTerminateRegex(regexStr, boost::regex::perl);
+
+
+
+	SerialUserStringList linesOfInterest = this->lastMessageAsList();
+	for (SerialUserStringList::iterator iter = linesOfInterest.begin();
+				iter != linesOfInterest.end(); iter++)
+	{
+		boost::smatch what;
+		// DRUID_DEBUG2("checking line", *iter);
+		DRUID_DEBUGVERBOSE("checking line:");
+		DRUID_DEBUGVERBOSE(*iter);
+		if (boost::regex_match(*iter, what, reqTerminateRegex))
+		{
+			DRUID_DEBUG("got a match...");
+
+			if (what[2].length())
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+
 }
 
 void SerialUIUser::checkIfRequiresInput()

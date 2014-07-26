@@ -30,6 +30,7 @@ namespace DRUID {
 
 
 typedef struct SerialUIControlStringsStruct {
+	float		version_num;
 	DRUIDString version;
 	DRUIDString up_key;
 	DRUIDString exit_key;
@@ -43,6 +44,7 @@ typedef struct SerialUIControlStringsStruct {
 	DRUIDString prompt_str;
 	DRUIDString eot_str;
 	DRUIDString more_stream;
+	DRUIDString terminate_gui;
 
 } SerialUIControlStrings ;
 

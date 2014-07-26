@@ -4,7 +4,7 @@
 
 TARGET_PLATFORM ?= PLATFORM_WINDOWS
 
-CROSS_HOME ?= /usr/local/win64
+CROSS_HOME ?= /usr/local/win_32
 STATIC_FLAG ?= -static 
 
 HOST_TARGET ?= i686-w64-mingw32
@@ -18,4 +18,5 @@ EXENAME	:= Druid4Arduino.exe
 
 
 
+DEBUG_FLAGS=-g0 -O2
 include makefiles/Makefile-common

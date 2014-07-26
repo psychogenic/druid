@@ -100,10 +100,13 @@ public:
 	SerialUIControlStrings setupProgModeStrings(DRUIDString & progRetStr);
 
 
+	bool requestedTerminate();
 private:
 
 	void checkIfMessageWasError();
 	void checkIfRequiresInput();
+
+
 	std::string truncatePromptFrom(std::string & msg);
 
 
