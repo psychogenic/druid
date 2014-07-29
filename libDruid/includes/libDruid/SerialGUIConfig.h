@@ -27,6 +27,14 @@
 // define DRUID4ARDUINO_DEBUG_ENABLE
 // #undef DRUID4ARDUINO_DEBUG_ENABLE
 
+#define DRUID4ARDUINO_VERSION_MAJOR			1
+#define DRUID4ARDUINO_VERSION_MINOR			2
+#define DRUID4ARDUINO_VERSION_PATCHLEVEL	4
+
+#define druidstr(s) #s
+#define xdruidstr(s) druidstr(s)
+#define DRUID4ARDUINO_VERSION_STRING()		 xdruidstr(DRUID4ARDUINO_VERSION_MAJOR) "." xdruidstr(DRUID4ARDUINO_VERSION_MINOR) "." xdruidstr(DRUID4ARDUINO_VERSION_PATCHLEVEL)
+
 
 #define DRUID4ARDUINO_MAX_RESPONSE_DELAY_SECONDS		6
 
@@ -67,6 +75,10 @@
 #		define PLATFORM_SLEEP(amount)		sleep(amount)
 #	endif
 #endif
+
+
+#define DRUID4ARDUINO_SITE_URL "http://flyingcarsandstuff.com/projects/druid4arduino/"
+#define DRUID4ARDUINO_LATESTVERSION_URL		"http://flyingcarsandstuff.com/downloads/druid-latest.txt"
 
 #ifdef PLATFORM_LINUX
 #define DRUID4ARDUINO_COUNTER_URL		"http://flyingcarsandstuff.com/projects/SerialGUI/counter?os=Linux"
