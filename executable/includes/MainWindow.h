@@ -49,10 +49,13 @@ public:
 	MainWindow(const wxString& title, const wxPoint& pos, const wxSize& size);
 
     void OnQuit(wxCommandEvent& event);
+    void OnCheckForUpdates(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
     void OnSettings(wxCommandEvent& event);
 
     void OnToggleRawInput(wxCommandEvent& event);
+
+    void OnAutoUpdateCheck(wxCommandEvent& event);
     void OnSelectUploadRateConservative(wxCommandEvent& event);
     void OnSelectUploadRateStandard(wxCommandEvent& event);
     void OnSelectUploadRateFast(wxCommandEvent& event);
@@ -80,6 +83,8 @@ public:
 	virtual void inputReceivedFromPanel(wxString input);
 
 private:
+
+	void availableUpdateCheck(bool showOnlyPositives=true);
 
 	void doReInit();
     void buildMenus();
@@ -127,6 +132,7 @@ private:
     wxMenuBar* menuBar;
     wxMenu* deviceMenu;
     wxMenuItem * raw_input_toggle;
+    wxMenuItem * auto_update_checks_toggle;
     wxToolBar *toolbar;
     InputPanel * input;
 	wxTextCtrl * raw_input;
@@ -158,6 +164,7 @@ private:
     wxBitmap cmd_icon;
     wxBitmap submenu_icon;
     unsigned int upload_rate_delay_factor;
+    bool automatic_update_checks;
     wxString last_uploaded_filepath;
 
 

@@ -31,6 +31,7 @@
 #define DRUID4ARDUINO_CONFIG_BAUDRATE				"/Settings/BaudRate"
 #define DRUID4ARDUINO_CONFIG_SERIALPORT				"/Settings/SerialPort"
 #define DRUID4ARDUINO_CONFIG_UPLOADDELAYFACTOR		"/Settings/UploadDelayRate"
+#define DRUID4ARDUINO_CONFIG_AUTOUPDATECHECKS		"/Settings/AutoUpdateChecks"
 #define DRUID4ARDUINO_CONFIG_LASTUPLOADFILEPATH		"/History/LastUpload"
 
 

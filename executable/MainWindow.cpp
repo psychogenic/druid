@@ -21,10 +21,12 @@
 
 #include <libDruid/SerialDruid.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/lexical_cast.hpp>
 #include <wx/config.h>
+#include <wx/url.h>
 #include <wx/hyperlink.h>
 #include "MainWindow.h"
 #include "SUIWindow.h"
@@ -75,6 +77,8 @@ enum
     ID_RawInput,
     ID_ToggleRawInput,
     ID_MenuCrawlTimer,
+    ID_CheckForUpdates,
+    ID_AutoCheckForUpdates,
 };
 
 
@@ -215,14 +219,28 @@ MainWindow::MainWindow(const wxString& title, const wxPoint& pos,
 			wxSizerFlags(0).Expand().Border(wxALL, 5));
 
 
+
 	wxBitmap my_icon(*_img_logo);
 
-	wxBitmapButton * siteButton = new wxBitmapButton(this, ID_SiteButton, my_icon);
 
-	siteButton->SetBackgroundColour(darkBg);
-	siteButton->SetToolTip(wxT(DRUID4ARDUINO_APP_NAME));
 
-	outputButtonsSizer->Add(siteButton, wxSizerFlags(1).Expand().Border(wxALL, 5));
+#ifdef PLATFORM_LINUX
+	wxBitmapButton * siteLogo = new wxBitmapButton(this, ID_SiteButton, my_icon);
+	siteLogo->SetBitmapFocus(my_icon);
+	siteLogo->SetBitmapLabel(my_icon);
+	siteLogo->SetLabel(wxT("Druid"));
+#else
+	// windows can't seem to handle the bitmap button correctly, so we
+	// just use a static bimap
+	wxStaticBitmap * siteLogo = new wxStaticBitmap(this, ID_SiteButton, my_icon);
+
+#endif
+
+	siteLogo->SetBackgroundColour(darkBg);
+	siteLogo->SetToolTip(wxT(DRUID4ARDUINO_APP_NAME));
+
+
+	outputButtonsSizer->Add(siteLogo, wxSizerFlags(1).Expand().Border(wxALL, 5));
 
 	outputSizer->Add(outputButtonsSizer,
 			wxSizerFlags(1).Expand().Border(wxALL, 5));
@@ -263,8 +281,17 @@ void MainWindow::buildMenus()
 	wxMenu* menuFile = new wxMenu;
 	menuFile->Append(ID_ReInit, wxT("&Re Initialize"));
 	menuFile->AppendSeparator();
+	menuFile->Append(ID_CheckForUpdates, wxT("&Update Check"));
+	auto_update_checks_toggle = menuFile->AppendCheckItem(ID_AutoCheckForUpdates, wxT("&Automatic Update Checks"));
 	menuFile->Append(ID_Quit, wxT("E&xit"));
 
+
+	loadConfig();
+
+	if (automatic_update_checks)
+		auto_update_checks_toggle->Check(true);
+	else
+		auto_update_checks_toggle->Check(false);
 
 
 	// EDIT
@@ -272,7 +299,6 @@ void MainWindow::buildMenus()
 	wxMenu* menuEdit = new wxMenu;
 	menuEdit->Append(ID_Settings, wxT("&Settings"));
 
-	loadConfig();
 	wxMenu * menuUploadRate = new wxMenu;
 	wxMenuItem * upload_rate_conservative = menuUploadRate->AppendRadioItem(ID_UploadStreamRate_Conservative, wxT("&Conservative"), wxT("Slow but sure uploads"));
 	wxMenuItem * upload_rate_standard = menuUploadRate->AppendRadioItem(ID_UploadStreamRate_Standard, wxT("&Standard"), wxT("Standard upload rate"));
@@ -463,6 +489,12 @@ void MainWindow::doReInit()
 
 	resetStatusBar();
 
+
+	if (automatic_update_checks && (rand() % 127) > 109)
+		availableUpdateCheck(true);
+
+
+
 	// if we already have a connection, close that down and come back later
 	if (connection)
 	{
@@ -554,6 +586,7 @@ void MainWindow::doReInit()
 
 
 	crawlMenusTimer->Start(MAINWINDOW_CONNECTION_STARTCRAWL_DELAY_MS, true);
+
 
 	return;
 }
@@ -918,6 +951,75 @@ void MainWindow::OnAbout(wxCommandEvent& evt)
 
 }
 
+void MainWindow::availableUpdateCheck(bool showOnlyPositives)
+{
+
+	char curVersionStr[] = DRUID4ARDUINO_VERSION_STRING();
+
+
+	wxMessageDialog * msgDial = NULL;
+
+	wxString versionURLStr(wxT(DRUID4ARDUINO_LATESTVERSION_URL));
+	wxURL versionURL(versionURLStr);
+
+
+	wxString dialogTitle(wxT("Version Check"));
+	if (versionURL.GetError() != wxURL_NOERR)
+	{
+		if (! showOnlyPositives)
+			msgDial = new wxMessageDialog(this, wxT("Could not connect to check version"),
+					dialogTitle, wxOK | wxICON_ERROR);
+	} else {
+		// no error connecting...
+		DRUID4ARDUINO_DEBUG("Connecting to verion #...");
+		wxInputStream *in_stream;
+
+		in_stream = versionURL.GetInputStream();
+
+		if (! in_stream)
+		{
+
+			if (! showOnlyPositives)
+				msgDial = new wxMessageDialog(this, wxT("Could not read (remote) version info"),
+					dialogTitle, wxOK | wxICON_ERROR);
+
+		} else {
+			char buf[20];
+			while (! in_stream->Eof())
+			{
+				in_stream->Read(buf, 20);
+			}
+
+			if (strncmp(curVersionStr, buf, strlen(curVersionStr)) == 0)
+			{
+
+				if (! showOnlyPositives)
+					msgDial = new wxMessageDialog(this, wxT("Druid4Arduino is up to date!"),
+						dialogTitle, wxOK | wxICON_INFORMATION);
+			} else {
+
+				wxString notifMsg(wxT("A newer version is available, upgrade to "));
+				notifMsg += wxString(buf, wxConvUTF8);
+				notifMsg += wxT(" at ");
+				notifMsg += wxString(_T(DRUID4ARDUINO_SITE_URL));
+
+				msgDial = new wxMessageDialog(this, notifMsg,
+						dialogTitle, wxOK | wxICON_EXCLAMATION);
+			}
+		}
+
+	} // end if we could get the URL
+
+	if (msgDial != NULL)
+		msgDial->ShowModal();
+}
+void MainWindow::OnCheckForUpdates(wxCommandEvent& evt)
+{
+
+	availableUpdateCheck(false);
+
+}
+
 void MainWindow::moveToTopLevelMenu()
 {
 	DRUID::SerialUIUserPtr serial_user = connection->serialUser();
@@ -1169,7 +1271,16 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 		serial_user->setAutoReplaceLastMessage(true);
 
 		if (serial_user->requestedTerminate())
+		{
+
+			SetStatusText(wxT("GUI Termination requested"));
+
+			// TODO: FIXME -- show user we aren't just dying but terminating on purpose.
+
 			Close(true);
+
+		}
+
 	}
 
 
@@ -1548,6 +1659,17 @@ void MainWindow::OnToggleRawInput(wxCommandEvent& event)
 	Layout();
 }
 
+void MainWindow::OnAutoUpdateCheck(wxCommandEvent& event)
+{
+	bool curSetting = false;
+	if (auto_update_checks_toggle->IsChecked())
+		curSetting = true;
+
+	automatic_update_checks = curSetting;
+	saveConfig();
+
+}
+
 
 void MainWindow::OnSelectUploadRateConservative(wxCommandEvent& event)
 {
@@ -1599,6 +1721,8 @@ void MainWindow::saveConfig()
 	static wxString baudRateStr(wxT(DRUID4ARDUINO_CONFIG_BAUDRATE));
 	static wxString serialPortStr(wxT(DRUID4ARDUINO_CONFIG_SERIALPORT));
 	static wxString uploadDelayFactorStr(wxT(DRUID4ARDUINO_CONFIG_UPLOADDELAYFACTOR));
+	static wxString autoUpdateChecksStr(wxT(DRUID4ARDUINO_CONFIG_AUTOUPDATECHECKS));
+
 	static std::string rCtor("moc.cinegohcysp ,nageeD taP )C( thgirypoC");
 
 	  wxConfig *config = new wxConfig(wxT(DRUID4ARDUINO_APP_NAME));
@@ -1613,6 +1737,8 @@ void MainWindow::saveConfig()
 	  config->Write(baudRateStr, (int)baud_rate);
 	  config->Write(serialPortStr, DRUID_STDSTRING_TOWX(serial_port));
 	  config->Write(uploadDelayFactorStr, (int)upload_rate_delay_factor);
+	  config->Write(autoUpdateChecksStr, automatic_update_checks);
+
 
 	  delete config;
 }
@@ -1622,6 +1748,7 @@ bool MainWindow::loadConfig()
 	static wxString serialPortStr(wxT(DRUID4ARDUINO_CONFIG_SERIALPORT));
 	static wxString uploadDelayFactorStr(wxT(DRUID4ARDUINO_CONFIG_UPLOADDELAYFACTOR));
 	static wxString lastUploadedFilePathStr(wxT(DRUID4ARDUINO_CONFIG_LASTUPLOADFILEPATH));
+	static wxString autoUpdateChecksStr(wxT(DRUID4ARDUINO_CONFIG_AUTOUPDATECHECKS));
 
 	wxConfig *config = new wxConfig(wxT(DRUID4ARDUINO_APP_NAME));
 	wxString str;
@@ -1648,6 +1775,11 @@ bool MainWindow::loadConfig()
 
 	config->Read(lastUploadedFilePathStr, &last_uploaded_filepath);
 
+	if (! config->Read(autoUpdateChecksStr, &automatic_update_checks))
+	{
+		automatic_update_checks = true;
+	}
+
 
 	delete config;
 	return true;
@@ -1673,7 +1805,7 @@ void MainWindow::configUpdateLastUploadedFilePath(wxString & filepath)
 
 void MainWindow::OnSiteClick(wxCommandEvent& event)
 {
-	static const wxString siteURL(wxT("http://flyingcarsandstuff.com/projects/druid4arduino/"));
+	static const wxString siteURL(wxT(DRUID4ARDUINO_SITE_URL));
 
 	wxLaunchDefaultBrowser(siteURL);
 }
@@ -1711,10 +1843,12 @@ void MainWindow::OnRawInputEnter(wxCommandEvent& event)
 
 BEGIN_EVENT_TABLE(MainWindow, wxFrame)
     EVT_MENU(ID_Settings,  MainWindow::OnSettings)
+    EVT_MENU(ID_AutoCheckForUpdates, MainWindow::OnAutoUpdateCheck)
     EVT_MENU(ID_Quit,  MainWindow::OnQuit)
     EVT_MENU(ID_About, MainWindow::OnAbout)
     EVT_MENU(ID_Help, MainWindow::OnHelp)
     EVT_MENU(ID_ReInit, MainWindow::OnReInit)
+    EVT_MENU(ID_CheckForUpdates, MainWindow::OnCheckForUpdates)
     EVT_MENU(ID_Settings, MainWindow::OnSettings)
     EVT_MENU(ID_ToggleRawInput, MainWindow::OnToggleRawInput)
     EVT_MENU(ID_UploadStreamRate_Conservative, MainWindow::OnSelectUploadRateConservative)
