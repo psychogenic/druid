@@ -56,6 +56,10 @@ InputPanel::InputPanel(wxWindow *parent, InputPanelReceiver * receiver) : wxPane
 	errsizer = new wxBoxSizer(wxVERTICAL);
 	inputsizer = new wxBoxSizer(wxHORIZONTAL);
 
+
+	// a little spacer text
+	topsizer->Add(new wxStaticText(this,wxID_ANY, wxT("")), 0, wxALIGN_CENTER );
+
 	titleTxt = new wxStaticText(this, wxID_ANY, wxT("Input"));
 	topsizer->Add(titleTxt, 0, wxALIGN_CENTER );
 
@@ -138,6 +142,9 @@ void InputPanel::OnResetColourTimer(wxTimerEvent & event)
 		SetBackgroundColour(darkBg);
 		resetColourTimer->Stop();
 	}
+
+
+	Layout();
 
 
 }
