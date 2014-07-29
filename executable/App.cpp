@@ -25,12 +25,23 @@
 
 namespace DRUID {
 
+#ifdef PLATFORM_LINUX
+#define DEF_WIN_WIDTH	680
+#define DEF_WIN_HEIGHT	550
+#else
+#define DEF_WIN_WIDTH	680
+#define DEF_WIN_HEIGHT	610
+#endif
+
 bool App::OnInit()
 {
 
 
 
-	MainWindow *frame = new MainWindow(_T(DRUID4ARDUINO_APP_NAME),  wxPoint(100, 75), wxSize(680, 550) );
+	srand(time(0));
+
+
+	MainWindow *frame = new MainWindow(_T(DRUID4ARDUINO_APP_NAME),  wxPoint(100, 75), wxSize(DEF_WIN_WIDTH, DEF_WIN_HEIGHT) );
     frame->Show( true );
     SetTopWindow( frame );
 
