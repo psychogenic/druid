@@ -14,6 +14,10 @@ BOOST_LIBSUFFIX ?= -mt-s
 SERIALUI_CXXFLAGS ?=  -I../SerialUI/includes
 SERIALUI_LDFLAGS ?= 
 
+
+
+BUILD_DIR ?= build-w32
+
 EXENAME	:= Druid4Arduino.exe
 
 

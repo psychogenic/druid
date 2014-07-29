@@ -1,6 +1,7 @@
 # this file is used by the other makefiles, which are responsible for setting important variables
 
 
+BUILD_DIR ?= build
 DEBUG_FLAGS ?= -g3 -O0
 #DEBUG_FLAGS ?= -O3
 #DEBUG_FLAGS ?= 
@@ -55,17 +56,17 @@ SERIALGUI_LDFLAGS =  $(STATICFLAG) $(WX_LDFLAGS) $(SERIALUI_LDFLAGS) $(PLATFORM_
 
 MODULES   := executable libDruid
 SRC_DIR   := $(MODULES)	
-BUILD_DIR := $(addprefix build/,$(MODULES))
+BLDDIR := $(addprefix $(BUILD_DIR)/,$(MODULES))
 
 SRC       := $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.cpp))
-OBJ       := $(patsubst %.cpp,build/%.o,$(SRC))
+OBJ       := $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(SRC))
 INCPATHS  := $(foreach sdir,$(SRC_DIR),$(sdir)/includes)
 INCLUDES  := $(addprefix -I,$(INCPATHS))
 
 
 ifeq ($(TARGET_PLATFORM), PLATFORM_WINDOWS)
 	RESRC        := $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.rs))
-	RESOBJ       := $(patsubst %.rs,build/%.o,$(RESRC))	
+	RESOBJ       := $(patsubst %.rs,$(BUILD_DIR)/%.o,$(RESRC))	
 	RESFLAGS ?=  `$(WX_CONFIG) --cxxflags  | sed -e 's/\-D[^ ]*//g'`
 
 endif
@@ -90,26 +91,26 @@ endef
 
 .PHONY: all checkdirs clean
 
-all: checkdirs build/$(EXENAME) 
+all: checkdirs $(BUILD_DIR)/$(EXENAME) 
 
 
-build/$(EXENAME): $(OBJ) $(RESOBJ)
+$(BUILD_DIR)/$(EXENAME): $(OBJ) $(RESOBJ)
 	$(LD) -o $@ $(OBJ) $(SERIALGUI_LDFLAGS)
 	# $(LD) $^ -o $@ $(SERIALGUI_LDFLAGS)
 
 
 
-checkdirs: $(BUILD_DIR)
+checkdirs: $(BLDDIR)
 
-$(BUILD_DIR):
+$(BLDDIR):
 	@mkdir -p $@
 
 clean:
-	@rm -rf $(BUILD_DIR)
+	@rm -rf $(BLDDIR)
 
 
-$(foreach bdir,$(BUILD_DIR),$(eval $(call make-resgoal,$(bdir))))
+$(foreach bdir,$(BLDDIR),$(eval $(call make-resgoal,$(bdir))))
 
-$(foreach bdir,$(BUILD_DIR),$(eval $(call make-goal,$(bdir))))
+$(foreach bdir,$(BLDDIR),$(eval $(call make-goal,$(bdir))))
 
 
