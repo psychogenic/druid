@@ -356,14 +356,59 @@ void SerialUIUser::serialReceived(char* buffer, size_t bytes_transferred) {
 		checkForLastMessage();
 
 }
+bool SerialUIUser::haveBufferedMessage()
+{
+
+	static const size_t eot_str_len = eot_str.length();
+
+	DRUID_DEBUG("Checking for bufferered message...");
+	if (incoming_message.size() < 10)
+	{
+		DRUID_DEBUG2("... too short", incoming_message);
+
+		return false; // no worth my time
+	}
+
+
+	DRUIDString::iterator findIter = std::search(incoming_message.begin(),
+			incoming_message.end(), eot_str.begin(), eot_str.end());
+
+	if (findIter != incoming_message.end()) {
+		// has EOT, leave it alone...
+		DRUID_DEBUG("has EOT.");
+		return false;
+	}
+
+
+	DRUID_DEBUG("Have bufferered message!");
+	return true;
+}
+
+DRUIDString SerialUIUser::getAndClearBufferedMessage()
+{
+	DRUIDString retStr;
+	// last_msg.lock();
+	if (haveBufferedMessage())
+	{
+
+		retStr = incoming_message;
+		incoming_message.clear();
+		// last_msg.unlock();
+	}
+	DRUID_DEBUG2("Returning bufferered message", retStr);
+	return retStr;
+}
 
 void SerialUIUser::checkForLastMessage()
 {
 
 	static const size_t eot_str_len = eot_str.length();
 
-	// am checking for EOTs, so do it:
 
+	if (! incoming_message.size())
+		return;
+
+	// am checking for EOTs, so do it:
 	DRUIDString::iterator findIter = std::search(incoming_message.begin(),
 			incoming_message.end(), eot_str.begin(), eot_str.end());
 

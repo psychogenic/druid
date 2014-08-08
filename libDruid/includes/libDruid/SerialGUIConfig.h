@@ -24,12 +24,12 @@
 #include "libDruid/ExternalIncludes.h"
 
 //
-// define DRUID4ARDUINO_DEBUG_ENABLE
+// #define DRUID4ARDUINO_DEBUG_ENABLE
 // #undef DRUID4ARDUINO_DEBUG_ENABLE
 
 #define DRUID4ARDUINO_VERSION_MAJOR			1
 #define DRUID4ARDUINO_VERSION_MINOR			2
-#define DRUID4ARDUINO_VERSION_PATCHLEVEL	4
+#define DRUID4ARDUINO_VERSION_PATCHLEVEL	5
 
 #define druidstr(s) #s
 #define xdruidstr(s) druidstr(s)

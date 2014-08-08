@@ -200,6 +200,9 @@ MainWindow::MainWindow(const wxString& title, const wxPoint& pos,
 
 
 
+    wxFont txtCtrlFont(12, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+
+    // wxFont(int pointSize, wxFontFamily family, int style, wxFontWeight weight,);
 
     bottomSizer->Add(rawInputSizer,
     			wxSizerFlags(0).Expand().Border(wxRIGHT, 120));
@@ -208,7 +211,7 @@ MainWindow::MainWindow(const wxString& title, const wxPoint& pos,
 			wxDefaultPosition, wxSize(280, 90), wxTE_MULTILINE);
 
 	outputTextCtrl->SetForegroundColour(darkFg);
-
+	outputTextCtrl->SetFont(txtCtrlFont);
 	outputSizer->Add(outputTextCtrl, wxSizerFlags(5).Expand().Border(wxALL, 5));
 
 
@@ -916,8 +919,26 @@ void MainWindow::OnAutoInitTimer(wxTimerEvent & event)
 }
 void MainWindow::OnPingTimer(wxTimerEvent & event)
 {
+
+
 	if (! awaiting_input)
 	{
+
+
+		DRUID::SerialUIUserPtr serial_user = connection->serialUser();
+		DRUIDString inbufStr = serial_user->getAndClearBufferedMessage();
+		if (inbufStr.size())
+		{
+			outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(inbufStr));
+		}
+
+		inbufStr = serial_user->lastMessage();
+		if (inbufStr.size())
+		{
+			serial_user->lastMessageClear();
+			outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(inbufStr));
+		}
+
 		time_t time_now = time(NULL);
 		if (time_now - last_interaction >= MAXIMUM_IDLE_SECS)
 		{
@@ -927,7 +948,9 @@ void MainWindow::OnPingTimer(wxTimerEvent & event)
 			}
 			last_interaction = time_now;
 		}
+
 	}
+
 
 }
 void MainWindow::OnQuit(wxCommandEvent&) {
@@ -1266,7 +1289,7 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 		stat += runStatusDone;
 		SetStatusText(stat);
 		outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
-
+		serial_user->lastMessageClear();
 
 		serial_user->setAutoReplaceLastMessage(true);
 

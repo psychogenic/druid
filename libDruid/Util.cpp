@@ -172,6 +172,7 @@ bool UtilConnectionPackage::ping(long maxDelaySeconds)
 		if (serial_user->incomingBufferSize() != bufSize)
 		{
 			waitingForResp = false;
+			serial_user->flushReceiveBuffer();
 		}
 		DRUID_DEBUGVERBOSE('.');
 	} while (waitingForResp && (time(NULL) < max_time));

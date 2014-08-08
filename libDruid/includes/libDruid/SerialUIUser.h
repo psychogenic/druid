@@ -101,6 +101,9 @@ public:
 
 
 	bool requestedTerminate();
+	bool haveBufferedMessage();
+	DRUIDString getAndClearBufferedMessage();
+
 private:
 
 	void checkIfMessageWasError();
