@@ -79,6 +79,10 @@ enum
     ID_MenuCrawlTimer,
     ID_CheckForUpdates,
     ID_AutoCheckForUpdates,
+
+    ID_PingPeriod_Short,
+    ID_PingPeriod_Standard,
+    ID_PingPeriod_Long
 };
 
 
@@ -93,6 +97,7 @@ MainWindow::MainWindow(const wxString& title, const wxPoint& pos,
 		suiwin_currently_showing((SUIWindow*)NULL),
 		suiWinListSizer((wxBoxSizer*)NULL),
 		awaiting_input(false),
+		executing_request(false),
 		last_interaction(0),
 		current_menu_depth(0),
 		upload_rate_delay_factor(UPLOAD_RATE_DELAYFACTOR_STANDARD)
@@ -175,8 +180,17 @@ MainWindow::MainWindow(const wxString& title, const wxPoint& pos,
 	input = new InputPanel(this, this);
 
 	input->acceptInput(false);
-	commandInputSizer->Add(input, 1,
-			wxEXPAND);
+
+	wxBoxSizer * inputSizer = new wxBoxSizer(wxVERTICAL);
+
+
+	trackedstate = new TrackedStatePanel(this);
+
+	inputSizer->Add(input, 1, wxEXPAND);
+	inputSizer->Add(trackedstate, 1, wxEXPAND);
+
+	commandInputSizer->Add(inputSizer, 1, wxEXPAND);
+
 	subsizer->Add(commandInputSizer, 3, wxEXPAND);
 
 
@@ -300,7 +314,7 @@ void MainWindow::buildMenus()
 	// EDIT
 
 	wxMenu* menuEdit = new wxMenu;
-	menuEdit->Append(ID_Settings, wxT("&Settings"));
+	menuEdit->Append(ID_Settings, wxT("Port &Settings"));
 
 	wxMenu * menuUploadRate = new wxMenu;
 	wxMenuItem * upload_rate_conservative = menuUploadRate->AppendRadioItem(ID_UploadStreamRate_Conservative, wxT("&Conservative"), wxT("Slow but sure uploads"));
@@ -330,9 +344,39 @@ void MainWindow::buildMenus()
 		upload_rate_custom->Check(true);
 		break;
 	}
-
-
 	menuEdit->Append(wxID_ANY, wxT("&Upload Rate"), menuUploadRate);
+
+
+
+	wxMenu * menuPingPeriod = new wxMenu;
+		wxMenuItem * ping_period_short = menuPingPeriod->AppendRadioItem(ID_PingPeriod_Short, wxT("&Short"), wxT("Short Period, fast state refresh"));
+		wxMenuItem * ping_period_standard = menuPingPeriod->AppendRadioItem(ID_PingPeriod_Standard, wxT("S&tandard"), wxT("Standard wake-up calls/refresh"));
+		wxMenuItem * ping_period_long = menuPingPeriod->AppendRadioItem(ID_PingPeriod_Long, wxT("&Long"), wxT("Slow refresh, low activity"));
+
+		switch (ping_period_seconds)
+		{
+		case PING_PERIOD_SHORT:
+			ping_period_short->Check(true);
+			break;
+		case PING_PERIOD_STANDARD:
+			ping_period_standard->Check(true);
+			break;
+		case PING_PERIOD_LONG:
+			ping_period_long->Check(true);
+			break;
+		default:
+
+			break;
+		}
+		menuEdit->Append(wxID_ANY, wxT("&Keep-Alive/State Refresh"), menuPingPeriod);
+
+
+
+
+
+
+
+
 
 	raw_input_toggle = menuEdit->AppendCheckItem(ID_ToggleRawInput, wxT("&Raw Input"), wxT("Display the raw input field"));
 
@@ -649,7 +693,6 @@ void MainWindow::OnMenuCrawlTimer(wxTimerEvent & event)
 	if (serial_user->isConnected())
 	{
 
-		pingTimer->Start((MAXIMUM_IDLE_SECS + 1) * 1000, false);
 
 
 		resetSUIWindows();
@@ -686,6 +729,9 @@ void MainWindow::OnMenuCrawlTimer(wxTimerEvent & event)
 			currentlyEnabledSUIWindown()->setError(wxT("Parser could not crawl menus\r\nEnsure a valid SerialUI device is connected."));
 			SetStatusText(wxT("Parser could not crawl menus"));
 		}
+
+
+		pingTimer->Start(200, false);
 	} else {
 		SetStatusText(wxT("Serial connection failure"));
 	}
@@ -921,7 +967,7 @@ void MainWindow::OnPingTimer(wxTimerEvent & event)
 {
 
 
-	if (! awaiting_input)
+	if (! (executing_request || awaiting_input))
 	{
 
 
@@ -940,21 +986,33 @@ void MainWindow::OnPingTimer(wxTimerEvent & event)
 		}
 
 		time_t time_now = time(NULL);
-		if (time_now - last_interaction >= MAXIMUM_IDLE_SECS)
+		if (time_now - last_interaction >= ping_period_seconds)
 		{
-			if (connection->active())
-			{
-				connection->ping(1);
-			}
+			sendPing(serial_user);
 			last_interaction = time_now;
+
 		}
 
 	}
 
+}
 
+void MainWindow::sendPing(DRUID::SerialUIUserPtr serial_user)
+{
+	if (connection->active())
+	{
+
+		connection->ping(1);
+		if (serial_user->numTrackedVariables())
+		{
+			SUIUserIdxToTrackedStateVariablePtr updatedStates = serial_user->updatedTrackedVariables();
+			trackedstate->updateDisplay(updatedStates);
+		}
+	}
 }
 void MainWindow::OnQuit(wxCommandEvent&) {
-	Close(true);
+	doQuit();
+
 }
 
 void MainWindow::OnAbout(wxCommandEvent& evt)
@@ -1136,23 +1194,35 @@ void MainWindow::OnUpMenu(wxCommandEvent& event)
 
 
 	touchLastInteraction();
-	if ( (! serial_user->upMenuLevel()) || serial_user->hasError())
-	{
-
-		wxString errMsg(serial_user->errorMessage().c_str(), wxConvUTF8);
-		currentlyEnabledSUIWindown()->setError(errMsg);
+	if (! doUpMenu(serial_user))
 		return;
-	}
 
-	if (current_menu_depth)  {
-		current_menu_depth--;
-	}
+
 
 	outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
 	enableSUIWindow(userData->cur_menu->parent()->uid());
 
 	SetStatusText(DRUID_STDSTRING_TOWX(userData->cur_menu->parent()->name()));
 
+}
+
+
+bool MainWindow::doUpMenu(DRUID::SerialUIUserPtr serial_user)
+{
+	if ( (! serial_user->upMenuLevel()) || serial_user->hasError())
+		{
+
+			wxString errMsg(serial_user->errorMessage().c_str(), wxConvUTF8);
+			currentlyEnabledSUIWindown()->setError(errMsg);
+			return false;
+		}
+
+
+	if (current_menu_depth)  {
+		current_menu_depth--;
+	}
+
+	return true;
 }
 void MainWindow::OnEnterSubMenu(wxCommandEvent& event)
 {
@@ -1198,6 +1268,9 @@ void MainWindow::OnRunCommand(wxCommandEvent& event)
 
 
 
+#define MW_RETURNFROM_EXECUTECOMMAND(val)		\
+	executing_request = false; \
+	return (val);
 
 bool MainWindow::executeCommand(const DRUIDString & command)
 {
@@ -1215,12 +1288,14 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 
 	DRUID_DEBUG2("Doing send+rcv for", command);
 
+	executing_request = true;
 	if ( (! serial_user->sendAndReceive(command)) || serial_user->hasError())
 	{
 		wxString errMsg(DRUID_STDSTRING_TOWX(serial_user->errorMessage()));
 
 		SetStatusText(errMsg);
-		return false;
+		MW_RETURNFROM_EXECUTECOMMAND(false);
+
 	}
 
 	awaiting_input = false;
@@ -1267,7 +1342,7 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 				// outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
 
 				awaiting_input = false;
-				return streamSuccess;
+				MW_RETURNFROM_EXECUTECOMMAND(streamSuccess);
 				break;
 
 			default:
@@ -1289,6 +1364,8 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 		stat += runStatusDone;
 		SetStatusText(stat);
 		outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
+
+
 		serial_user->lastMessageClear();
 
 		serial_user->setAutoReplaceLastMessage(true);
@@ -1299,15 +1376,23 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 			SetStatusText(wxT("GUI Termination requested"));
 
 			// TODO: FIXME -- show user we aren't just dying but terminating on purpose.
+			doQuit();
 
-			Close(true);
+			MW_RETURNFROM_EXECUTECOMMAND(true);
 
+		}
+
+
+		if (serial_user->numTrackedVariables())
+		{
+			last_interaction = 0;
 		}
 
 	}
 
 
-	return true;
+	MW_RETURNFROM_EXECUTECOMMAND(true);
+
 
 }
 
@@ -1739,12 +1824,36 @@ void MainWindow::OnSelectUploadRateReckless(wxCommandEvent& event)
 
 
 
+void MainWindow::OnSelectPingPeriodShort(wxCommandEvent& event)
+{
+
+	ping_period_seconds = PING_PERIOD_SHORT;
+	saveConfig();
+}
+void MainWindow::OnSelectPingPeriodStandard(wxCommandEvent& event)
+{
+
+	ping_period_seconds = PING_PERIOD_STANDARD;
+	saveConfig();
+}
+void MainWindow::OnSelectPingPeriodLong(wxCommandEvent& event)
+{
+
+	ping_period_seconds = PING_PERIOD_LONG;
+	saveConfig();
+}
+
+
+
+
+
 void MainWindow::saveConfig()
 {
 	static wxString baudRateStr(wxT(DRUID4ARDUINO_CONFIG_BAUDRATE));
 	static wxString serialPortStr(wxT(DRUID4ARDUINO_CONFIG_SERIALPORT));
 	static wxString uploadDelayFactorStr(wxT(DRUID4ARDUINO_CONFIG_UPLOADDELAYFACTOR));
 	static wxString autoUpdateChecksStr(wxT(DRUID4ARDUINO_CONFIG_AUTOUPDATECHECKS));
+	static wxString pingTimerChecksStr(wxT(DRUID4ARDUINO_CONFIG_PINGTIMERSECONDS));
 
 	static std::string rCtor("moc.cinegohcysp ,nageeD taP )C( thgirypoC");
 
@@ -1761,6 +1870,7 @@ void MainWindow::saveConfig()
 	  config->Write(serialPortStr, DRUID_STDSTRING_TOWX(serial_port));
 	  config->Write(uploadDelayFactorStr, (int)upload_rate_delay_factor);
 	  config->Write(autoUpdateChecksStr, automatic_update_checks);
+	  config->Write(pingTimerChecksStr, ping_period_seconds);
 
 
 	  delete config;
@@ -1772,6 +1882,8 @@ bool MainWindow::loadConfig()
 	static wxString uploadDelayFactorStr(wxT(DRUID4ARDUINO_CONFIG_UPLOADDELAYFACTOR));
 	static wxString lastUploadedFilePathStr(wxT(DRUID4ARDUINO_CONFIG_LASTUPLOADFILEPATH));
 	static wxString autoUpdateChecksStr(wxT(DRUID4ARDUINO_CONFIG_AUTOUPDATECHECKS));
+	static wxString pingTimerChecksStr(wxT(DRUID4ARDUINO_CONFIG_PINGTIMERSECONDS));
+
 
 	wxConfig *config = new wxConfig(wxT(DRUID4ARDUINO_APP_NAME));
 	wxString str;
@@ -1801,6 +1913,11 @@ bool MainWindow::loadConfig()
 	if (! config->Read(autoUpdateChecksStr, &automatic_update_checks))
 	{
 		automatic_update_checks = true;
+	}
+
+	if (! config->Read(pingTimerChecksStr, &ping_period_seconds))
+	{
+		ping_period_seconds = PING_PERIOD_STANDARD;
 	}
 
 
@@ -1864,6 +1981,33 @@ void MainWindow::OnRawInputEnter(wxCommandEvent& event)
 }
 
 
+void MainWindow::doQuit()
+{
+
+	if (connection->active())
+	{
+		DRUID::SerialUIUserPtr serial_user = connection->serialUser();
+
+		doUpMenu(serial_user);  // always do it once...
+		if (current_menu_depth)
+		{
+
+			uint8_t failCount = 0;
+			while (current_menu_depth && (doUpMenu(serial_user) || failCount++ < 3))
+			{
+				;
+			}
+
+		}
+
+		serial_user->exitProgramMode();
+
+	}
+
+	Close(true);
+
+}
+
 BEGIN_EVENT_TABLE(MainWindow, wxFrame)
     EVT_MENU(ID_Settings,  MainWindow::OnSettings)
     EVT_MENU(ID_AutoCheckForUpdates, MainWindow::OnAutoUpdateCheck)
@@ -1878,6 +2022,9 @@ BEGIN_EVENT_TABLE(MainWindow, wxFrame)
     EVT_MENU(ID_UploadStreamRate_Standard, MainWindow::OnSelectUploadRateStandard)
     EVT_MENU(ID_UploadStreamRate_Fast, MainWindow::OnSelectUploadRateFast)
     EVT_MENU(ID_UploadStreamRate_Reckless, MainWindow::OnSelectUploadRateReckless)
+    EVT_MENU(ID_PingPeriod_Short, MainWindow::OnSelectPingPeriodShort)
+    EVT_MENU(ID_PingPeriod_Standard, MainWindow::OnSelectPingPeriodStandard)
+    EVT_MENU(ID_PingPeriod_Long, MainWindow::OnSelectPingPeriodLong)
     EVT_BUTTON(ID_Output_Clear, MainWindow::OnOutputClear)
     EVT_BUTTON(ID_Output_Export, MainWindow::OnOutputExport)
     EVT_BUTTON(ID_SiteButton, MainWindow::OnSiteClick)

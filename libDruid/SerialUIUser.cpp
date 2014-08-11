@@ -198,6 +198,14 @@ SerialUIControlStrings SerialUIUser::setupProgModeStrings(DRUIDString & progRetS
 	}
 	return ctrl_strings;
 }
+
+void SerialUIUser::exitProgramMode()
+{
+	static const DRUIDString command_mode_user(SUI_STRINGS_MODE_USER);
+
+	this->send(command_mode_user);
+
+}
 SerialUIControlStrings SerialUIUser::enterProgramMode()
 {
 
@@ -467,9 +475,35 @@ bool SerialUIUser::messageReceived() {
 	{
 		message_rcvd = true;
 		checkIfMessageWasError();
+		checkIfMessageContainsStateTracking();
 		checkIfRequiresInput();
 		if (requestedTerminate())
 			exit(0);
+
+		/*
+		DRUIDString new_line("\r\n");
+
+		SerialUserStringList msgList = lastMessageAsList();
+		DRUIDString new_last_msg;
+		new_last_msg.reserve(last_msg.size());
+
+		for (SerialUserStringList::iterator iter = msgList.begin(); iter !=
+				msgList.end(); iter++)
+		{
+			std::string cleanVal = truncatePromptFrom(*iter);
+			if (cleanVal.size())
+			{
+				new_last_msg.append(cleanVal + new_line);
+			}
+		}
+		if (! new_last_msg.size())
+		{
+			last_msg.clear();
+			return false;
+		}
+
+		last_msg.setTo(new_last_msg);
+		*/
 
 
 	}
@@ -498,13 +532,208 @@ DRUIDString SerialUIUser::lastMessage() {
 std::string SerialUIUser::truncatePromptFrom(std::string & msg)
 {
 
-	const std::string regexp_str(DRUIDStdString("^(.+?") + ctrl_strings.prompt_str + ").*?$");
-	boost::regex prompt_finder_regexp(regexp_str);
+
+	const std::string regexp_str(DRUIDStdString("^(.*?") + ctrl_strings.prompt_str + ")\\s*$");
+	boost::regex prompt_finder_regexp(regexp_str, boost::regex::normal);
 
 	return boost::regex_replace(msg, prompt_finder_regexp,
 			std::string(""), boost::match_any | boost::format_all);
 
 }
+
+void SerialUIUser::checkIfMessageContainsStateTracking()
+{
+	static const DRUIDString trackedStatePrefix_str(SUI_SERIALUI_TRACKEDSTATE_PREFIX_PROG);
+
+	// !~TS~42#i#red# 0#i#green# 0#i#blue# 0#b#enable#0#
+	static const DRUIDString trackedStateRegexStr(DRUIDString("^")
+			+ SUI_SERIALUI_TRACKEDSTATE_PREFIX_PROG + "(\\d+)(.)(.+)$");
+	static  boost::regex trackedStateRegex(trackedStateRegexStr);
+	static  boost::regex whitespaceRegex(DRUIDString("\\s+"));
+
+
+	SerialUserStringList msgList, cleanedMsg, trackedDataList;
+	DRUID_DEBUG("checkIfMessageContainsStateTracking()");
+	// make a copy, last_message can change asynchronously
+	{
+		DRUIDString msg(last_msg.get());
+
+		if (! boost::algorithm::find_first(msg, trackedStatePrefix_str))
+		{
+			// no tracking, fuggetaboudit
+			DRUID_DEBUG2("Not found", trackedStatePrefix_str);
+			return;
+		}
+	}
+
+	msgList = lastMessageAsList();
+
+	last_msg.lock();
+	DRUID_DEBUG2("Found marker", trackedStatePrefix_str);
+
+
+	for (SerialUserStringList::iterator iter = msgList.begin(); iter != msgList.end(); iter++)
+	{
+		
+		DRUID_DEBUG2("checking line", *iter);
+
+		boost::smatch what;
+		if (! boost::regex_match(*iter, what, trackedStateRegex))
+		{
+
+			DRUID_DEBUG("not here");
+			cleanedMsg.push_back(*iter);
+			continue;
+		}
+
+		// gotta match
+		trackedDataList.clear();
+		uint8_t i=0;
+		const DRUIDString stringSeps(DRUIDString("([^") + DRUIDString(what[2]) + "]+)");
+		boost::regex stringSepRegex(stringSeps, boost::regex::normal);
+
+
+		DRUID_DEBUG2("MARKER LINE, splitting with", stringSeps);
+		DRUIDString tContents(what[3]);
+		boost::regex_split(std::back_inserter(trackedDataList), tContents, stringSepRegex);
+
+		DRUID_DEBUG2("SPLIT INTO ", trackedDataList.size());
+		for (uint8_t i=0; i<trackedDataList.size(); i+=3)
+		{
+
+
+			DRUIDString type = trackedDataList[i];
+			DRUIDString name = trackedDataList[i+1];
+			DRUIDString val = trackedDataList[i+2];
+
+			val = boost::regex_replace(val, whitespaceRegex,
+					std::string(""), boost::match_any | boost::format_all);
+
+			DRUID_DEBUG("State tracking:")
+			DRUID_DEBUG2("\ttype", type);
+			DRUID_DEBUG2("\tname", name);
+			DRUID_DEBUG2("\tvalue", val);
+
+			if (! (type.size() && name.size() && val.size()))
+			{
+				continue;
+				// TODO: Output error
+			}
+
+			SUIUserNameToTrackedStateVariable::iterator tFindIter = trackedVariablesMap.find(name);
+			if (tFindIter == trackedVariablesMap.end())
+			{
+
+				// not yet present
+				trackedVariablesMap[name].name = name;
+				switch (type.at(0))
+				{
+				case 'b':
+					// boolean
+					trackedVariablesMap[name].type = SUI::SUITracked_Bool;
+
+					break;
+				case 'i':
+
+					trackedVariablesMap[name].type = SUI::SUITracked_UInt;
+
+					break;
+
+				case 'f':
+
+					trackedVariablesMap[name].type = SUI::SUITracked_Float;
+					break;
+				}
+			}
+
+			trackedVariablesMap[name].last_val = val;
+
+			switch (trackedVariablesMap[name].type) {
+
+			case SUI::SUITracked_Bool:
+				trackedVariablesMap[name].val_bool = val.at(0) == '1' ? true : false;
+				break;
+			case SUI::SUITracked_UInt:
+
+				try {
+					// get the expected size of the program strings string
+
+					trackedVariablesMap[name].val_int =  boost::lexical_cast<unsigned long>(val);
+
+				} catch (boost::bad_lexical_cast &) {
+					DRUID_DEBUG2("Weird cast attempt for tracked int",val);
+					trackedVariablesMap[name].val_int = 0;
+				}
+				break;
+
+			case SUI::SUITracked_Float:
+
+				try {
+					// get the expected size of the program strings string
+
+					trackedVariablesMap[name].val_int =  boost::lexical_cast<float>(val);
+
+				} catch (boost::bad_lexical_cast &) {
+					DRUID_DEBUG2("Weird cast attempt for tracked float",val);
+					trackedVariablesMap[name].val_float = 0;
+				}
+				break;
+			}
+
+
+
+		}
+		
+	}
+
+
+	last_msg.unlock();
+	last_msg.clear();
+	last_msg.lock();
+	DRUIDString end_line("\r\n");
+	for(SerialUserStringList::iterator iter=cleanedMsg.begin(); iter != cleanedMsg.end(); iter++)
+	{
+		std::string strVal = truncatePromptFrom(*iter);
+		if (strVal.size())
+		{
+			last_msg.directAccess().append(*iter);
+			last_msg.directAccess().append(end_line);
+		}
+	}
+	last_msg.unlock();
+
+
+
+
+
+
+}
+
+SUIUserIdxToTrackedStateVariablePtr SerialUIUser::updatedTrackedVariables()
+{
+	SUIUserIdxToTrackedStateVariablePtr retMap;
+
+
+	for (SUIUserNameToTrackedStateVariable::iterator iter=trackedVariablesMap.begin();
+			iter != trackedVariablesMap.end();
+			iter++)
+	{
+
+		SUIUserTrackedState * tstate = &((*iter).second);
+		if ( tstate->last_val != tstate->known_val)
+		{
+
+			tstate->known_val = tstate->last_val;
+
+			retMap[tstate->idx] = tstate;
+		}
+	}
+
+	return retMap;
+
+
+}
+
 void SerialUIUser::checkIfMessageWasError()
 {
 	static const DRUIDString errorPrefix_str(SUI_SERIALUI_MESSAGE_ERROR_PREFIX);

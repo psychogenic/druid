@@ -25,6 +25,7 @@
 #include "libDruid/SerialGUIConfig.h"
 #include "libDruid/Util.h"
 
+#include <SUIStrings.h>
 namespace DRUID {
 
 
@@ -158,21 +159,37 @@ void UtilConnectionPackage::destroy() {
 
 bool UtilConnectionPackage::ping(long maxDelaySeconds)
 {
+	static const DRUIDString pingCommandStr(SUI_STRINGS_PING_COMMAND);
 	if (! is_active)
 		return false;
 
 	time_t max_time = time(NULL) + maxDelaySeconds;
 	size_t bufSize = serial_user->incomingBufferSize();
-	serial_user->send('\r');
-	serial_user->send('\n');
+	bool hasPing =  (serial_user->ctrl_strings.version_num >= 1.130f);
+	if (hasPing)
+	{
+		serial_user->sendAndReceive(pingCommandStr);
+
+	} else {
+
+		serial_user->send('\r');
+		serial_user->send('\n');
+	}
 
 	bool waitingForResp = true;
 	do {
 		usleep(100000);
+
 		if (serial_user->incomingBufferSize() != bufSize)
 		{
-			waitingForResp = false;
-			serial_user->flushReceiveBuffer();
+
+			if (hasPing)
+			{
+				waitingForResp = serial_user->messageReceived();
+			} else {
+				waitingForResp = false;
+				serial_user->flushReceiveBuffer();
+			}
 		}
 		DRUID_DEBUGVERBOSE('.');
 	} while (waitingForResp && (time(NULL) < max_time));

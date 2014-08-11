@@ -37,8 +37,9 @@
 
 #include <deque>
 #include <vector>
+#include <map>
 
-
+#include <SUIStateTracking.h>
 
 typedef std::string DRUIDStdString;
 

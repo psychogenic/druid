@@ -87,8 +87,11 @@ InputPanel::InputPanel(wxWindow *parent, InputPanelReceiver * receiver) : wxPane
 	topsizer->Add(btn, wxSizerFlags(1).Align(wxALIGN_CENTER_HORIZONTAL | wxALIGN_TOP).Border(wxALL, 5));
 
 
+	wxStaticText * spacerTxt = new wxStaticText(this, wxID_ANY, wxT(""));
+
 	errTxt = new wxStaticText(this, wxID_ANY, wxT(" "));
 
+	errsizer->Add(spacerTxt, 0, wxALIGN_CENTER );
 	errsizer->Add(errTxt, 0, wxALIGN_CENTER );
 	topsizer->Add(errsizer, wxSizerFlags(1).Align(wxALIGN_CENTER).Border(wxALL, 10));
 

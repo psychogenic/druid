@@ -27,6 +27,7 @@
 #include "InputPanel.h"
 #include "Widgets.h"
 #include "HelpStrings.h"
+#include "TrackedStatePanel.h"
 
 namespace DRUID {
 
@@ -40,6 +41,10 @@ typedef std::map<DRUID::MenuUID, SUIWindow *> MenuUIDToSUIWindowMap;
 #define UPLOAD_RATE_DELAYFACTOR_STANDARD			35
 #define UPLOAD_RATE_DELAYFACTOR_FAST				20
 #define UPLOAD_RATE_DELAYFACTOR_RECKLESS			5
+
+#define PING_PERIOD_SHORT			3
+#define PING_PERIOD_STANDARD		12
+#define PING_PERIOD_LONG			25
 
 
 
@@ -60,6 +65,13 @@ public:
     void OnSelectUploadRateStandard(wxCommandEvent& event);
     void OnSelectUploadRateFast(wxCommandEvent& event);
     void OnSelectUploadRateReckless(wxCommandEvent& event);
+
+
+
+    void OnSelectPingPeriodShort(wxCommandEvent& event);
+    void OnSelectPingPeriodStandard(wxCommandEvent& event);
+    void OnSelectPingPeriodLong(wxCommandEvent& event);
+
 
     void OnHelp(wxCommandEvent& event);
 
@@ -125,6 +137,14 @@ private:
     void configUpdateLastUploadedFilePath(wxString & filepath);
 
     bool sendFileStream();
+    void sendPing(DRUID::SerialUIUserPtr serial_user);
+
+    bool doUpMenu(DRUID::SerialUIUserPtr serial_user);
+
+    void doQuit();
+
+
+
 
 
     unsigned int menu_id_counter;
@@ -135,6 +155,8 @@ private:
     wxMenuItem * auto_update_checks_toggle;
     wxToolBar *toolbar;
     InputPanel * input;
+    TrackedStatePanel * trackedstate;
+
 	wxTextCtrl * raw_input;
 	wxStaticText * raw_input_label;
     wxTextCtrl * outputTextCtrl;
@@ -147,6 +169,7 @@ private:
 
     wxString prog_name;
     unsigned int baud_rate;
+    int ping_period_seconds;
     std::string serial_port;
 
     DRUID::ConnectionPackagePtr connection;
@@ -157,6 +180,7 @@ private:
     SUIWindow * suiwin_currently_showing;
     wxBoxSizer * suiWinListSizer;
     bool awaiting_input;
+    bool executing_request;
     time_t last_interaction;
     unsigned int current_menu_depth;
 

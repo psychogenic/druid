@@ -25,6 +25,7 @@
 
 #include "libDruid/SerialUser.h"
 #include "libDruid/SerialUIControlStrings.h"
+#include "libDruid/ExternalIncludes.h"
 
 #include <boost/thread/mutex.hpp>
 
@@ -55,6 +56,43 @@ private:
 	DRUIDString last_message;
 	boost::mutex message_mutex;
 } LockedLastMessage;
+
+
+static uint8_t totalNumTrackedVariables = 0;
+
+typedef struct SUIUserTrackedStateStruct {
+
+	uint8_t idx;
+	SUI::TrackedType type;
+	union {
+		unsigned long  val_int;
+		float 			val_float;
+		bool 			val_bool;
+	};
+
+	DRUIDString name;
+	DRUIDString known_val;
+	DRUIDString last_val;
+
+	SUIUserTrackedStateStruct() : type(SUI::SUITracked_Bool), known_val(""), last_val("")
+	{
+		idx = totalNumTrackedVariables++;
+
+	}
+
+} SUIUserTrackedState;
+
+struct trackedStateSorter {
+	bool operator()(const SUIUserTrackedState * a, SUIUserTrackedState * b)
+	{
+		return a->idx < b->idx;
+	}
+};
+
+typedef std::map<DRUIDString, SUIUserTrackedState> SUIUserNameToTrackedStateVariable;
+typedef std::map<uint8_t, SUIUserTrackedState *> SUIUserIdxToTrackedStateVariablePtr;
+
+
 
 class SerialUIUser: public SerialUser {
 public:
@@ -97,6 +135,8 @@ public:
 	void setEndOfTransmissionString(const DRUIDString  & str) { eot_str = str;}
 
 	SerialUIControlStrings enterProgramMode();
+	void exitProgramMode();
+
 	SerialUIControlStrings setupProgModeStrings(DRUIDString & progRetStr);
 
 
@@ -104,10 +144,17 @@ public:
 	bool haveBufferedMessage();
 	DRUIDString getAndClearBufferedMessage();
 
+
+	size_t numTrackedVariables() { return trackedVariablesMap.size();}
+
+	SUIUserIdxToTrackedStateVariablePtr updatedTrackedVariables();
+
+	SerialUIControlStrings ctrl_strings;
 private:
 
 	void checkIfMessageWasError();
 	void checkIfRequiresInput();
+	void checkIfMessageContainsStateTracking();
 
 
 	std::string truncatePromptFrom(std::string & msg);
@@ -126,7 +173,8 @@ private:
 
 
 	LockedLastMessage last_msg;
-	SerialUIControlStrings ctrl_strings;
+
+	SUIUserNameToTrackedStateVariable trackedVariablesMap;
 
 };
 
