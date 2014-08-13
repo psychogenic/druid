@@ -34,6 +34,8 @@ public:
 
 	void updateDisplay(SUIUserIdxToTrackedStateVariablePtr & trackedVarData);
 
+	void clearDisplay();
+
 
 private:
 	wxBoxSizer *topsizer;

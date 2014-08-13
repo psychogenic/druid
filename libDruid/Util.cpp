@@ -157,7 +157,7 @@ void UtilConnectionPackage::destroy() {
 
 }
 
-bool UtilConnectionPackage::ping(long maxDelaySeconds)
+bool UtilConnectionPackage::ping(long maxDelaySeconds, bool checkForStateTracking)
 {
 	static const DRUIDString pingCommandStr(SUI_STRINGS_PING_COMMAND);
 	if (! is_active)
@@ -166,7 +166,8 @@ bool UtilConnectionPackage::ping(long maxDelaySeconds)
 	time_t max_time = time(NULL) + maxDelaySeconds;
 	size_t bufSize = serial_user->incomingBufferSize();
 	bool hasPing =  (serial_user->ctrl_strings.version_num >= 1.130f);
-	if (hasPing)
+	bool usingPingCommand = (hasPing && checkForStateTracking);
+	if (usingPingCommand)
 	{
 		serial_user->sendAndReceive(pingCommandStr);
 
@@ -183,7 +184,7 @@ bool UtilConnectionPackage::ping(long maxDelaySeconds)
 		if (serial_user->incomingBufferSize() != bufSize)
 		{
 
-			if (hasPing)
+			if (usingPingCommand)
 			{
 				waitingForResp = serial_user->messageReceived();
 			} else {

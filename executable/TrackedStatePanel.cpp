@@ -37,7 +37,7 @@ TrackedStatePanel::TrackedStatePanel(wxWindow *parent) : wxPanel( parent, -1, wx
 
 
 	// a little spacer text
-	topsizer->Add(new wxStaticText(this,wxID_ANY, wxT("")), 0, wxALIGN_CENTER );
+	// topsizer->Add(new wxStaticText(this,wxID_ANY, wxT("")), 0, wxALIGN_CENTER );
 	topsizer->Add(vsizer);
 
 	SetSizer(topsizer);
@@ -112,11 +112,13 @@ void TrackedStatePanel::updateDisplay(SUIUserIdxToTrackedStateVariablePtr & trac
 
 	Layout();
 
+}
 
-
-
-
-
+void TrackedStatePanel::clearDisplay()
+{
+	vsizer->Clear(true); // clear and delete windows
+	tracked_entries.clear();
+	Layout();
 }
 
 } /* namespace DRUID */

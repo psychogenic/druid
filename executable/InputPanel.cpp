@@ -84,7 +84,7 @@ InputPanel::InputPanel(wxWindow *parent, InputPanelReceiver * receiver) : wxPane
 	btn->SetForegroundColour(darkFg);
 	btn->SetMinSize(btnMinSize);
 	btn->SetMaxSize(btnMaxSize);
-	topsizer->Add(btn, wxSizerFlags(1).Align(wxALIGN_CENTER_HORIZONTAL | wxALIGN_TOP).Border(wxALL, 5));
+	topsizer->Add(btn, wxSizerFlags(2).Align(wxALIGN_CENTER_HORIZONTAL | wxALIGN_TOP).Border(wxALL, 5));
 
 
 	wxStaticText * spacerTxt = new wxStaticText(this, wxID_ANY, wxT(""));
@@ -107,11 +107,15 @@ InputPanel::InputPanel(wxWindow *parent, InputPanelReceiver * receiver) : wxPane
 void InputPanel::notifyUser()
 {
 	wxColour darkFg(DRUID_COLOUR_FOREGROUND_DARK);
-	wxColour lighBg(DRUID_COLOUR_BACKGROUND_LIGHT);
+	wxColour lightBg(DRUID_COLOUR_BACKGROUND_LIGHT);
 
 
-	SetForegroundColour(darkFg);
-	SetBackgroundColour(lighBg);
+	titleTxt->SetForegroundColour(darkFg);
+	titleTxt->SetBackgroundColour(lightBg);
+
+	inputPrefixTxt->SetForegroundColour(darkFg);
+	inputPrefixTxt->SetBackgroundColour(lightBg);
+
 	colourToggleCounter = 5;
 
 	resetColourTimer->Start(100, false);
@@ -119,7 +123,7 @@ void InputPanel::notifyUser()
 void InputPanel::OnResetColourTimer(wxTimerEvent & event)
 {
 	wxColour darkFg(DRUID_COLOUR_FOREGROUND_DARK);
-	wxColour lighBg(DRUID_COLOUR_BACKGROUND_LIGHT);
+	wxColour lightBg(DRUID_COLOUR_BACKGROUND_LIGHT);
 	wxColour whitecol(DRUID_COLOUR_WHITE);
 	wxColour darkBg(DRUID_COLOUR_BACKGROUND_DARK);
 
@@ -128,12 +132,28 @@ void InputPanel::OnResetColourTimer(wxTimerEvent & event)
 		if (colourToggleCounter % 2)
 		{
 
-			SetForegroundColour(darkFg);
-			SetBackgroundColour(lighBg);
+			// SetForegroundColour(darkFg);
+			// SetBackgroundColour(lighBg);
+
+
+			titleTxt->SetForegroundColour(darkFg);
+			titleTxt->SetBackgroundColour(lightBg);
+
+			inputPrefixTxt->SetForegroundColour(darkFg);
+			inputPrefixTxt->SetBackgroundColour(lightBg);
+
 		} else {
 
-			SetForegroundColour(whitecol);
-			SetBackgroundColour(darkBg);
+			// SetForegroundColour(whitecol);
+			// SetBackgroundColour(darkBg);
+
+
+			titleTxt->SetForegroundColour(whitecol);
+			titleTxt->SetBackgroundColour(darkBg);
+
+			inputPrefixTxt->SetForegroundColour(whitecol);
+			inputPrefixTxt->SetBackgroundColour(darkBg);
+
 		}
 
 		colourToggleCounter--;
@@ -141,8 +161,16 @@ void InputPanel::OnResetColourTimer(wxTimerEvent & event)
 	} else {
 
 		// we're done
-		SetForegroundColour(whitecol);
-		SetBackgroundColour(darkBg);
+		// SetForegroundColour(whitecol);
+		// SetBackgroundColour(darkBg);
+
+
+		titleTxt->SetForegroundColour(whitecol);
+		titleTxt->SetBackgroundColour(darkBg);
+
+		inputPrefixTxt->SetForegroundColour(whitecol);
+		inputPrefixTxt->SetBackgroundColour(darkBg);
+
 		resetColourTimer->Stop();
 	}
 

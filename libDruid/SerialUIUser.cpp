@@ -357,17 +357,22 @@ void SerialUIUser::serialReceived(char* buffer, size_t bytes_transferred) {
 	// append this data to the incoming msg
 	last_msg.lock();
 	incoming_message.append(buffer, bytes_transferred);
-
 	last_msg.unlock();
 
+	//
+
 	if (eot_checks_enabled)
+	{
 		checkForLastMessage();
+		// checkIfMessageContainsStateTracking();
+	}
 
 }
 bool SerialUIUser::haveBufferedMessage()
 {
 
 	static const size_t eot_str_len = eot_str.length();
+	static const DRUIDString trackedStatePrefix_str(SUI_SERIALUI_TRACKEDSTATE_PREFIX_PROG);
 
 	DRUID_DEBUG("Checking for bufferered message...");
 	if (incoming_message.size() < 10)
@@ -376,7 +381,6 @@ bool SerialUIUser::haveBufferedMessage()
 
 		return false; // no worth my time
 	}
-
 
 	DRUIDString::iterator findIter = std::search(incoming_message.begin(),
 			incoming_message.end(), eot_str.begin(), eot_str.end());
@@ -388,6 +392,18 @@ bool SerialUIUser::haveBufferedMessage()
 	}
 
 
+
+	findIter = std::search(incoming_message.begin(),
+			incoming_message.end(), trackedStatePrefix_str.begin(), trackedStatePrefix_str.end());
+
+	if (findIter != incoming_message.end()) {
+		// has EOT, leave it alone...
+		DRUID_DEBUG("has Tracking.");
+		return false;
+	}
+
+
+
 	DRUID_DEBUG("Have bufferered message!");
 	return true;
 }
@@ -396,13 +412,18 @@ DRUIDString SerialUIUser::getAndClearBufferedMessage()
 {
 	DRUIDString retStr;
 	// last_msg.lock();
+	// last_msg.lock();
 	if (haveBufferedMessage())
 	{
 
 		retStr = incoming_message;
+
 		incoming_message.clear();
+
+
 		// last_msg.unlock();
 	}
+	// last_msg.unlock();
 	DRUID_DEBUG2("Returning bufferered message", retStr);
 	return retStr;
 }
@@ -475,10 +496,11 @@ bool SerialUIUser::messageReceived() {
 	{
 		message_rcvd = true;
 		checkIfMessageWasError();
-		checkIfMessageContainsStateTracking();
 		checkIfRequiresInput();
 		if (requestedTerminate())
 			exit(0);
+
+		checkIfMessageContainsStateTracking();
 
 		/*
 		DRUIDString new_line("\r\n");
@@ -575,18 +597,51 @@ void SerialUIUser::checkIfMessageContainsStateTracking()
 	for (SerialUserStringList::iterator iter = msgList.begin(); iter != msgList.end(); iter++)
 	{
 		
-		DRUID_DEBUG2("checking line", *iter);
+		DRUID_DEBUG2("TRACKING: checking line", *iter);
 
 		boost::smatch what;
 		if (! boost::regex_match(*iter, what, trackedStateRegex))
 		{
 
-			DRUID_DEBUG("not here");
+			DRUID_DEBUG("not here, stashing in 'clean msg'");
 			cleanedMsg.push_back(*iter);
 			continue;
 		}
 
-		// gotta match
+		DRUID_DEBUG("Looks like tracking info...");
+
+		// gotta match, see if line is complete...
+		int expectedLen = 0;
+		DRUIDString specifiedLen(what[1]);
+		specifiedLen = boost::regex_replace(specifiedLen, whitespaceRegex,
+				std::string(""), boost::match_any | boost::format_all);
+
+		if (! specifiedLen.size())
+		{
+			DRUID_DEBUG2("Weird tracking line length", specifiedLen);
+			continue;
+		}
+
+		try {
+			// get the expected size of the program strings string
+
+			expectedLen =  boost::lexical_cast<int>(specifiedLen);
+
+		} catch (boost::bad_lexical_cast &) {
+			DRUID_DEBUG2("Weird cast attempt for tracking line length", specifiedLen);
+			continue;
+		}
+
+
+		DRUIDString tContents(what[3]);
+
+		if (expectedLen < (tContents.size() + 1))
+		{
+			DRUID_DEBUG("Tracking line still incomplete...");
+			continue;
+		}
+
+
 		trackedDataList.clear();
 		uint8_t i=0;
 		const DRUIDString stringSeps(DRUIDString("([^") + DRUIDString(what[2]) + "]+)");
@@ -594,7 +649,6 @@ void SerialUIUser::checkIfMessageContainsStateTracking()
 
 
 		DRUID_DEBUG2("MARKER LINE, splitting with", stringSeps);
-		DRUIDString tContents(what[3]);
 		boost::regex_split(std::back_inserter(trackedDataList), tContents, stringSepRegex);
 
 		DRUID_DEBUG2("SPLIT INTO ", trackedDataList.size());
@@ -687,6 +741,7 @@ void SerialUIUser::checkIfMessageContainsStateTracking()
 	}
 
 
+	DRUID_DEBUG("Removing tracking info from last msg...");
 	last_msg.unlock();
 	last_msg.clear();
 	last_msg.lock();
@@ -696,6 +751,7 @@ void SerialUIUser::checkIfMessageContainsStateTracking()
 		std::string strVal = truncatePromptFrom(*iter);
 		if (strVal.size())
 		{
+			DRUID_DEBUG2("TRACKING: last_msg += ", *iter);
 			last_msg.directAccess().append(*iter);
 			last_msg.directAccess().append(end_line);
 		}

@@ -38,7 +38,7 @@ public:
 	void destroy();
 
 
-	bool ping(long maxDelaySeconds=2);
+	bool ping(long maxDelaySeconds=2, bool checkForStateTracking = true);
 	bool active() { return is_active;}
 	SerialUIUserPtr serialUser() { return serial_user;}
 

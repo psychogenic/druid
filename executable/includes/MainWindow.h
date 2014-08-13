@@ -42,9 +42,10 @@ typedef std::map<DRUID::MenuUID, SUIWindow *> MenuUIDToSUIWindowMap;
 #define UPLOAD_RATE_DELAYFACTOR_FAST				20
 #define UPLOAD_RATE_DELAYFACTOR_RECKLESS			5
 
-#define PING_PERIOD_SHORT			3
-#define PING_PERIOD_STANDARD		12
-#define PING_PERIOD_LONG			25
+#define TRACKING_PERIOD_SHORT			3
+#define TRACKING_PERIOD_STANDARD		12
+#define TRACKING_PERIOD_LONG			25
+#define TRACKING_PERIOD_DISABLED		0
 
 
 
@@ -68,9 +69,12 @@ public:
 
 
 
-    void OnSelectPingPeriodShort(wxCommandEvent& event);
-    void OnSelectPingPeriodStandard(wxCommandEvent& event);
-    void OnSelectPingPeriodLong(wxCommandEvent& event);
+
+    void OnSelectStateTrackingPeriodShort(wxCommandEvent& event);
+    void OnSelectStateTrackingPeriodStandard(wxCommandEvent& event);
+    void OnSelectStateTrackingPeriodLong(wxCommandEvent& event);
+    void OnSelectStateTrackingDisable(wxCommandEvent& event);
+    bool useStateTracking();
 
 
     void OnHelp(wxCommandEvent& event);
@@ -169,7 +173,7 @@ private:
 
     wxString prog_name;
     unsigned int baud_rate;
-    int ping_period_seconds;
+    int tracking_interval_seconds;
     std::string serial_port;
 
     DRUID::ConnectionPackagePtr connection;

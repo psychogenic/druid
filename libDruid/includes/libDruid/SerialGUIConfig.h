@@ -29,7 +29,7 @@
 
 #define DRUID4ARDUINO_VERSION_MAJOR			1
 #define DRUID4ARDUINO_VERSION_MINOR			3
-#define DRUID4ARDUINO_VERSION_PATCHLEVEL	0
+#define DRUID4ARDUINO_VERSION_PATCHLEVEL	1
 
 #define druidstr(s) #s
 #define xdruidstr(s) druidstr(s)

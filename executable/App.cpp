@@ -26,11 +26,11 @@
 namespace DRUID {
 
 #ifdef PLATFORM_LINUX
-#define DEF_WIN_WIDTH	680
-#define DEF_WIN_HEIGHT	550
+#define DEF_WIN_WIDTH	750
+#define DEF_WIN_HEIGHT	565
 #else
-#define DEF_WIN_WIDTH	680
-#define DEF_WIN_HEIGHT	610
+#define DEF_WIN_WIDTH	770
+#define DEF_WIN_HEIGHT	630
 #endif
 
 bool App::OnInit()

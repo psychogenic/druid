@@ -80,9 +80,11 @@ enum
     ID_CheckForUpdates,
     ID_AutoCheckForUpdates,
 
-    ID_PingPeriod_Short,
-    ID_PingPeriod_Standard,
-    ID_PingPeriod_Long
+    ID_StateTrackingPeriod_Short,
+    ID_StateTrackingPeriod_Standard,
+    ID_StateTrackingPeriod_Long,
+    ID_StateTracking_Disable,
+
 };
 
 
@@ -348,27 +350,31 @@ void MainWindow::buildMenus()
 
 
 
-	wxMenu * menuPingPeriod = new wxMenu;
-		wxMenuItem * ping_period_short = menuPingPeriod->AppendRadioItem(ID_PingPeriod_Short, wxT("&Short"), wxT("Short Period, fast state refresh"));
-		wxMenuItem * ping_period_standard = menuPingPeriod->AppendRadioItem(ID_PingPeriod_Standard, wxT("S&tandard"), wxT("Standard wake-up calls/refresh"));
-		wxMenuItem * ping_period_long = menuPingPeriod->AppendRadioItem(ID_PingPeriod_Long, wxT("&Long"), wxT("Slow refresh, low activity"));
+	wxMenu * menuStateTrackingPeriod = new wxMenu;
+		wxMenuItem * ping_period_short = menuStateTrackingPeriod->AppendRadioItem(ID_StateTrackingPeriod_Short, wxT("&Short"), wxT("Short Period, fast state refresh"));
+		wxMenuItem * ping_period_standard = menuStateTrackingPeriod->AppendRadioItem(ID_StateTrackingPeriod_Standard, wxT("S&tandard"), wxT("Standard wake-up calls/refresh"));
+		wxMenuItem * ping_period_long = menuStateTrackingPeriod->AppendRadioItem(ID_StateTrackingPeriod_Long, wxT("&Long"), wxT("Slow refresh, low activity"));
+		wxMenuItem * ping_disabled = menuStateTrackingPeriod->AppendRadioItem(ID_StateTracking_Disable, wxT("&Disable"), wxT("No state tracking"));
 
-		switch (ping_period_seconds)
+		switch (tracking_interval_seconds)
 		{
-		case PING_PERIOD_SHORT:
+		case TRACKING_PERIOD_SHORT:
 			ping_period_short->Check(true);
 			break;
-		case PING_PERIOD_STANDARD:
+		case TRACKING_PERIOD_STANDARD:
 			ping_period_standard->Check(true);
 			break;
-		case PING_PERIOD_LONG:
+		case TRACKING_PERIOD_LONG:
 			ping_period_long->Check(true);
+			break;
+		case TRACKING_PERIOD_DISABLED:
+			ping_disabled->Check(true);
 			break;
 		default:
 
 			break;
 		}
-		menuEdit->Append(wxID_ANY, wxT("&Keep-Alive/State Refresh"), menuPingPeriod);
+		menuEdit->Append(wxID_ANY, wxT("&Tracking Refresh Interval"), menuStateTrackingPeriod);
 
 
 
@@ -536,6 +542,7 @@ void MainWindow::doReInit()
 
 	resetStatusBar();
 
+	trackedstate->clearDisplay();
 
 	if (automatic_update_checks && (rand() % 127) > 109)
 		availableUpdateCheck(true);
@@ -651,7 +658,7 @@ void MainWindow::OnMenuCrawlTimer(wxTimerEvent & event)
 	// PLATFORM_SLEEP(1);
 
 
-	if(connection->ping(3))
+	if(connection->ping(3, false))
 	{
 		DRUID4ARDUINO_DEBUG2("Device seems to be alive on ", serial_port);
 
@@ -716,6 +723,7 @@ void MainWindow::OnMenuCrawlTimer(wxTimerEvent & event)
 		}
 
 		parser.setControlStrings(serial_user->enterProgramMode());
+		executing_request = true;
 		topLevelMenu = parser.crawl(serial_user);
 
 		if (topLevelMenu)
@@ -730,7 +738,8 @@ void MainWindow::OnMenuCrawlTimer(wxTimerEvent & event)
 			SetStatusText(wxT("Parser could not crawl menus"));
 		}
 
-
+		serial_user->clear();
+		executing_request = false;
 		pingTimer->Start(200, false);
 	} else {
 		SetStatusText(wxT("Serial connection failure"));
@@ -970,23 +979,31 @@ void MainWindow::OnPingTimer(wxTimerEvent & event)
 	if (! (executing_request || awaiting_input))
 	{
 
-
 		DRUID::SerialUIUserPtr serial_user = connection->serialUser();
 		DRUIDString inbufStr = serial_user->getAndClearBufferedMessage();
 		if (inbufStr.size())
 		{
+			DRUID_DEBUG2("******** PING appending buffer: ", inbufStr);
+
 			outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(inbufStr));
 		}
 
-		inbufStr = serial_user->lastMessage();
-		if (inbufStr.size())
+		if (serial_user->messageReceived())
 		{
-			serial_user->lastMessageClear();
-			outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(inbufStr));
+			inbufStr = serial_user->lastMessage();
+			if (inbufStr.size())
+			{
+				serial_user->lastMessageClear();
+				DRUID_DEBUG2("******** PING appending lastMessage: ", inbufStr);
+
+				outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(inbufStr));
+			}
 		}
 
 		time_t time_now = time(NULL);
-		if (time_now - last_interaction >= ping_period_seconds)
+
+		int ping_interval = (tracking_interval_seconds == TRACKING_PERIOD_DISABLED) ? TRACKING_PERIOD_STANDARD : tracking_interval_seconds;
+		if (time_now - last_interaction >= ping_interval)
 		{
 			sendPing(serial_user);
 			last_interaction = time_now;
@@ -996,18 +1013,26 @@ void MainWindow::OnPingTimer(wxTimerEvent & event)
 	}
 
 }
-
+bool MainWindow::useStateTracking()
+{
+	return (tracking_interval_seconds != TRACKING_PERIOD_DISABLED);
+}
 void MainWindow::sendPing(DRUID::SerialUIUserPtr serial_user)
 {
 	if (connection->active())
 	{
+		if (executing_request)
+			return;
 
-		connection->ping(1);
-		if (serial_user->numTrackedVariables())
+		executing_request = true;
+		bool state_track = useStateTracking();
+		connection->ping(1, state_track);
+		if (state_track && serial_user->numTrackedVariables())
 		{
 			SUIUserIdxToTrackedStateVariablePtr updatedStates = serial_user->updatedTrackedVariables();
 			trackedstate->updateDisplay(updatedStates);
 		}
+		executing_request = false;
 	}
 }
 void MainWindow::OnQuit(wxCommandEvent&) {
@@ -1018,7 +1043,7 @@ void MainWindow::OnQuit(wxCommandEvent&) {
 void MainWindow::OnAbout(wxCommandEvent& evt)
 {
 
-	wxString msg(wxT("Druid4Arduino v1.2.3 Copyright (C) 2013,2014 Pat Deegan, psychogenic.com.\r\n\r\n"));
+	wxString msg(wxT("Druid4Arduino v1.3.1 Copyright (C) 2013,2014 Pat Deegan, psychogenic.com.\r\n\r\n"));
 
 	msg += wxT("This program comes with ABSOLUTELY NO WARRANTY;\r\n");
 	msg += wxT("This is free software, and you are welcome to redistribute it ");
@@ -1198,8 +1223,10 @@ void MainWindow::OnUpMenu(wxCommandEvent& event)
 		return;
 
 
+	DRUIDString lastMsg(serial_user->lastMessage());
+	DRUID_DEBUG2("******** executing command appending buffer: ", lastMsg);
 
-	outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
+	outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(lastMsg));
 	enableSUIWindow(userData->cur_menu->parent()->uid());
 
 	SetStatusText(DRUID_STDSTRING_TOWX(userData->cur_menu->parent()->name()));
@@ -1282,6 +1309,12 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 
 	SetStatusText(runStatus);
 
+
+	uint8_t wait_attempts=0;
+	while (executing_request && wait_attempts++ < 5)
+		usleep(1000);
+
+
 	touchLastInteraction();
 	DRUID::SerialUIUserPtr serial_user = connection->serialUser();
 
@@ -1363,10 +1396,13 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 		wxString stat(cmdName);
 		stat += runStatusDone;
 		SetStatusText(stat);
-		outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
+		if (serial_user->messageReceived())
+		{
+			outputTextCtrl->AppendText(DRUID_STDSTRING_TOWX(serial_user->lastMessage()));
 
+			serial_user->lastMessageClear();
+		}
 
-		serial_user->lastMessageClear();
 
 		serial_user->setAutoReplaceLastMessage(true);
 
@@ -1383,7 +1419,7 @@ bool MainWindow::executeCommand(const DRUIDString & command)
 		}
 
 
-		if (serial_user->numTrackedVariables())
+		if (useStateTracking() && serial_user->numTrackedVariables())
 		{
 			last_interaction = 0;
 		}
@@ -1824,26 +1860,32 @@ void MainWindow::OnSelectUploadRateReckless(wxCommandEvent& event)
 
 
 
-void MainWindow::OnSelectPingPeriodShort(wxCommandEvent& event)
+void MainWindow::OnSelectStateTrackingPeriodShort(wxCommandEvent& event)
 {
 
-	ping_period_seconds = PING_PERIOD_SHORT;
+	tracking_interval_seconds = TRACKING_PERIOD_SHORT;
 	saveConfig();
 }
-void MainWindow::OnSelectPingPeriodStandard(wxCommandEvent& event)
+void MainWindow::OnSelectStateTrackingPeriodStandard(wxCommandEvent& event)
 {
 
-	ping_period_seconds = PING_PERIOD_STANDARD;
+	tracking_interval_seconds = TRACKING_PERIOD_STANDARD;
 	saveConfig();
 }
-void MainWindow::OnSelectPingPeriodLong(wxCommandEvent& event)
+void MainWindow::OnSelectStateTrackingPeriodLong(wxCommandEvent& event)
 {
 
-	ping_period_seconds = PING_PERIOD_LONG;
+	tracking_interval_seconds = TRACKING_PERIOD_LONG;
 	saveConfig();
 }
 
 
+void MainWindow::OnSelectStateTrackingDisable(wxCommandEvent& event)
+{
+
+	tracking_interval_seconds = TRACKING_PERIOD_DISABLED;
+	saveConfig();
+}
 
 
 
@@ -1870,7 +1912,7 @@ void MainWindow::saveConfig()
 	  config->Write(serialPortStr, DRUID_STDSTRING_TOWX(serial_port));
 	  config->Write(uploadDelayFactorStr, (int)upload_rate_delay_factor);
 	  config->Write(autoUpdateChecksStr, automatic_update_checks);
-	  config->Write(pingTimerChecksStr, ping_period_seconds);
+	  config->Write(pingTimerChecksStr, tracking_interval_seconds);
 
 
 	  delete config;
@@ -1915,9 +1957,9 @@ bool MainWindow::loadConfig()
 		automatic_update_checks = true;
 	}
 
-	if (! config->Read(pingTimerChecksStr, &ping_period_seconds))
+	if (! config->Read(pingTimerChecksStr, &tracking_interval_seconds))
 	{
-		ping_period_seconds = PING_PERIOD_STANDARD;
+		tracking_interval_seconds = TRACKING_PERIOD_STANDARD;
 	}
 
 
@@ -1984,8 +2026,14 @@ void MainWindow::OnRawInputEnter(wxCommandEvent& event)
 void MainWindow::doQuit()
 {
 
-	if (connection->active())
+	if (connection.get() && connection->active())
 	{
+		uint8_t wait_count = 0;
+		while (executing_request && wait_count++ < 3)
+			PLATFORM_SLEEP(1);
+
+		executing_request = true; // lock out other comm events
+
 		DRUID::SerialUIUserPtr serial_user = connection->serialUser();
 
 		doUpMenu(serial_user);  // always do it once...
@@ -2001,6 +2049,7 @@ void MainWindow::doQuit()
 		}
 
 		serial_user->exitProgramMode();
+		executing_request = false;
 
 	}
 
@@ -2022,9 +2071,10 @@ BEGIN_EVENT_TABLE(MainWindow, wxFrame)
     EVT_MENU(ID_UploadStreamRate_Standard, MainWindow::OnSelectUploadRateStandard)
     EVT_MENU(ID_UploadStreamRate_Fast, MainWindow::OnSelectUploadRateFast)
     EVT_MENU(ID_UploadStreamRate_Reckless, MainWindow::OnSelectUploadRateReckless)
-    EVT_MENU(ID_PingPeriod_Short, MainWindow::OnSelectPingPeriodShort)
-    EVT_MENU(ID_PingPeriod_Standard, MainWindow::OnSelectPingPeriodStandard)
-    EVT_MENU(ID_PingPeriod_Long, MainWindow::OnSelectPingPeriodLong)
+    EVT_MENU(ID_StateTrackingPeriod_Short, MainWindow::OnSelectStateTrackingPeriodShort)
+    EVT_MENU(ID_StateTrackingPeriod_Standard, MainWindow::OnSelectStateTrackingPeriodStandard)
+    EVT_MENU(ID_StateTrackingPeriod_Long, MainWindow::OnSelectStateTrackingPeriodLong)
+    EVT_MENU(ID_StateTracking_Disable, MainWindow::OnSelectStateTrackingDisable)
     EVT_BUTTON(ID_Output_Clear, MainWindow::OnOutputClear)
     EVT_BUTTON(ID_Output_Export, MainWindow::OnOutputExport)
     EVT_BUTTON(ID_SiteButton, MainWindow::OnSiteClick)
